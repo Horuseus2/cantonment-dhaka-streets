@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cantonment: Dhaka Streets</title>
+<style>
+:root{--gold:#f5c542;--green:#58d26b;--red:#e5484d;--panel:rgba(12,14,18,.82);--line:rgba(255,255,255,.12);--txt:#f2f2f0}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--txt);font-family:"Segoe UI","Nirmala UI",system-ui,Arial,sans-serif;user-select:none;-webkit-user-select:none}
+#game,#game canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hidden{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#mmWrap{position:absolute;left:22px;bottom:22px;width:264px}
+#mm{display:block;width:264px;height:192px;border-radius:10px;border:2px solid rgba(0,0,0,.65);box-shadow:0 4px 18px rgba(0,0,0,.5);background:#1d2126}
+#bars{display:flex;gap:4px;margin-top:5px}
+.bar{height:9px;background:rgba(0,0,0,.6);border-radius:3px;overflow:hidden;flex:1}
+.bar i{display:block;height:100%;width:100%;transition:width .15s}
+.bar.hp i{background:linear-gradient(#7be08a,#3fae5a)}.bar.ar i{background:linear-gradient(#7fc4ff,#3b86d8)}
+.bar.hp{flex:1.4}
+#tr{position:absolute;right:26px;top:20px;text-align:right}
+#stars{font-size:30px;letter-spacing:3px;line-height:1;height:32px}
+#stars b{color:rgba(255,255,255,.18);font-weight:400}#stars b.on{color:var(--gold)}#stars.flash b.on{animation:fl .5s steps(2) infinite}
+@keyframes fl{50%{opacity:.25}}
+#money{font-size:34px;font-weight:800;color:var(--green);letter-spacing:.5px;line-height:1.15}
+#clock{font-size:17px;font-weight:600;opacity:.95}
+#wbox{margin-top:8px;display:inline-flex;align-items:center;gap:10px;background:rgba(0,0,0,.38);border-radius:8px;padding:4px 12px 4px 6px}
+#wicon{width:110px;height:44px;object-fit:contain;filter:drop-shadow(0 1px 2px #000)}
+#wname{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;opacity:.85}
+#wammo{font-size:22px;font-weight:800}
+#notes{position:absolute;left:22px;top:20px;width:340px;display:flex;flex-direction:column;gap:6px}
+.note{background:var(--panel);border-left:4px solid var(--gold);padding:8px 12px;border-radius:4px;font-size:14.5px;line-height:1.35;text-shadow:none;animation:nin .25s ease-out}
+@keyframes nin{from{transform:translateX(-30px);opacity:0}}
+#obj{position:absolute;left:50%;top:18px;transform:translateX(-50%);max-width:54vw;text-align:center;font-size:19px;font-weight:600;background:rgba(0,0,0,.42);padding:7px 18px;border-radius:8px}
+#obj small{display:block;font-size:15px;color:var(--gold);font-weight:700}
+#area{position:absolute;right:26px;bottom:26px;text-align:right;transition:opacity .6s}
+#areaName{font-size:30px;font-weight:800;font-style:italic;letter-spacing:.5px}
+#street{font-size:17px;opacity:.9}
+#speedo{position:absolute;right:26px;bottom:104px;text-align:right;font-weight:800;font-size:46px;line-height:1;font-variant-numeric:tabular-nums}
+#speedo small{font-size:15px;opacity:.8;margin-left:6px;font-weight:600}
+#big{position:absolute;right:26px;bottom:170px;font-size:26px;font-weight:800;font-style:italic;color:var(--gold);transition:opacity .6s;opacity:0}
+#sub{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);max-width:60vw;text-align:center;font-size:21px;font-weight:600;background:rgba(0,0,0,.5);padding:6px 16px;border-radius:6px;transition:opacity .3s;opacity:0}
+#prompt{position:absolute;left:50%;bottom:68px;transform:translateX(-50%);max-width:70vw;text-align:center;font-size:17px;font-weight:600;background:rgba(0,0,0,.55);padding:7px 16px;border-radius:6px;opacity:0;white-space:pre-wrap}
+#cross{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:0}
+#cross:before,#cross:after{content:"";position:absolute;filter:drop-shadow(0 0 1px #000)}
+#cross:before{left:12px;top:0;width:2px;height:26px;background:linear-gradient(#fff 0 32%,transparent 32% 68%,#fff 68%)}
+#cross:after{top:12px;left:0;height:2px;width:26px;background:linear-gradient(90deg,#fff 0 32%,transparent 32% 68%,#fff 68%)}
+#cross i{position:absolute;left:11.5px;top:11.5px;width:3px;height:3px;border-radius:50%;background:#fff;box-shadow:0 0 2px #000}
+#scope{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 31vh,#000 31.4vh)}
+#scope:before,#scope:after{content:"";position:absolute;background:#000}
+#scope:before{left:50%;top:0;width:1px;height:100%}#scope:after{top:50%;left:0;height:1px;width:100%}
+/* panels */
+.panel{position:fixed;right:28px;top:50%;transform:translateY(-50%);width:430px;max-height:86vh;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;backdrop-filter:blur(8px);display:flex;flex-direction:column}
+.panel h2{margin:0;font-size:24px;font-weight:800}
+.panel .sub{font-size:13.5px;color:var(--gold);margin:2px 0 12px;font-weight:600;letter-spacing:.3px}
+.items{overflow:auto;display:flex;flex-direction:column;gap:6px;padding-right:4px}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;background:rgba(255,255,255,.055);border:1px solid transparent;border-radius:8px;padding:9px 12px;cursor:pointer}
+.item.sel,.item:hover{background:rgba(245,197,66,.16);border-color:var(--gold)}
+.item b{font-size:16px}.item .pr{color:var(--green);font-weight:800;font-size:16px}
+.item small{grid-column:1/3;opacity:.75;font-size:12.5px;line-height:1.3}
+.item img{grid-column:1/3;height:34px;object-fit:contain;object-position:left;filter:invert(1) brightness(1.6)}
+.hint{margin-top:12px;font-size:12.5px;opacity:.7}
+.row{display:grid;grid-template-columns:118px 34px 1fr 34px;align-items:center;gap:6px;padding:3px 0}
+.row span{font-size:13px;opacity:.8}.row em{font-style:normal;text-align:center;font-weight:700;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px}
+.row em i{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.7);display:inline-block}
+.row button,.btn{background:rgba(255,255,255,.09);border:1px solid var(--line);border-radius:7px;padding:5px 0;font-weight:800}
+.row button:hover,.btn:hover{background:rgba(245,197,66,.25);border-color:var(--gold)}
+.btn{padding:10px 16px;font-size:15px}
+.btn.go{background:var(--gold);color:#111;border-color:var(--gold)}
+.btnrow{display:flex;gap:8px;margin-top:12px}.btnrow .btn{flex:1}
+input[type=text],input[type=password],select{font:inherit;background:rgba(0,0,0,.45);color:#fff;border:1px solid var(--line);border-radius:7px;padding:9px 12px;width:100%;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+/* overlays */
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,6,8,.72);backdrop-filter:blur(5px)}
+#menu{background:linear-gradient(90deg,rgba(5,6,8,.9) 0,rgba(5,6,8,.55) 42%,rgba(5,6,8,0) 75%);justify-content:flex-start;backdrop-filter:none}
+#menu .inner{margin-left:7vw;width:420px}
+h1.logo{margin:0;font-size:70px;line-height:.92;font-weight:900;letter-spacing:-1px;font-style:italic}
+h1.logo span{display:block;font-size:25px;letter-spacing:9px;font-style:normal;font-weight:700;color:var(--gold);margin-top:10px}
+.tag{margin:14px 0 26px;font-size:15px;opacity:.85;line-height:1.5}
+.mbtn{display:block;width:100%;text-align:left;background:rgba(255,255,255,.07);border:1px solid var(--line);border-left:4px solid transparent;border-radius:8px;padding:13px 18px;margin-bottom:8px;font-size:18px;font-weight:700}
+.mbtn:hover{border-left-color:var(--gold);background:rgba(245,197,66,.16)}
+.mbtn small{display:block;font-weight:400;font-size:12.5px;opacity:.7}
+.box{width:min(940px,92vw);max-height:88vh;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;overflow:hidden}
+.box h2{margin:0 0 4px;font-size:28px;font-weight:900;font-style:italic}
+.cols{display:grid;grid-template-columns:230px 1fr;gap:20px;min-height:0;flex:1;margin-top:14px}
+.cols .side{display:flex;flex-direction:column;gap:6px}
+.cols .main{overflow:auto;padding-right:6px}
+.set{display:grid;grid-template-columns:190px 1fr 60px;gap:10px;align-items:center;padding:7px 0;font-size:14.5px}
+.keys{display:grid;grid-template-columns:150px 1fr 150px 1fr;gap:5px 12px;font-size:13.5px}
+.keys kbd{background:rgba(255,255,255,.12);border-radius:5px;padding:2px 7px;font-family:inherit;font-weight:700;border:1px solid var(--line);justify-self:start}
+.roster{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;overflow:auto;padding-right:6px;margin-top:12px}
+.boy{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left}
+.boy:hover{border-color:var(--gold);background:rgba(201,162,39,.18)}
+.boy b{display:block;font-size:16px}.boy small{display:block;opacity:.78;font-size:12px;line-height:1.35;margin-top:2px}.boy em{display:block;font-style:normal;color:var(--gold);font-size:11.5px;margin-top:5px;font-weight:700}
+/* map */
+#mapv{position:fixed;inset:0;background:#14171b}
+#mapc{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+#legend{position:absolute;left:18px;top:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.75;max-height:90vh;overflow:auto}
+#legend h3{margin:0 0 4px;font-size:20px;font-style:italic}
+#legend i{font-style:normal;display:inline-block;width:24px;text-align:center}
+#maphint{position:absolute;right:18px;bottom:16px;background:var(--panel);border-radius:8px;padding:8px 14px;font-size:13.5px}
+#maptip{position:absolute;pointer-events:none;background:#000;border:1px solid var(--gold);border-radius:6px;padding:4px 9px;font-size:13px;font-weight:600;display:none;white-space:nowrap}
+/* wheel */
+#wheel{position:fixed;inset:0;background:rgba(0,0,0,.45);pointer-events:none}
+#wheel .w{position:absolute;width:132px;height:74px;margin:-37px 0 0 -66px;background:var(--panel);border:2px solid var(--line);border-radius:10px;text-align:center;font-size:11.5px;font-weight:700;padding-top:3px}
+#wheel .w img{width:112px;height:42px;object-fit:contain;display:block;margin:0 auto;filter:invert(1) brightness(1.6)}
+#wheel .w.sel{border-color:var(--gold);background:rgba(245,197,66,.28);transform:scale(1.12)}
+#wheel .c{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;font-size:24px;font-weight:800}
+#wheel .c small{display:block;font-size:15px;color:var(--gold)}
+/* loading + misc */
+#loading{position:fixed;inset:0;background:radial-gradient(circle at 30% 30%,#1b2a24,#07090b 70%);display:flex;flex-direction:column;justify-content:flex-end;padding:8vh 7vw}
+#loadbar{height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden;margin:18px 0 10px;max-width:560px}
+#loadbar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
+#loadtxt{font-size:15px;opacity:.85}#loadtip{font-size:13.5px;opacity:.6;margin-top:6px;max-width:560px;line-height:1.5}
+#fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .45s}
+#bigtext{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .5s;font-size:92px;font-weight:900;font-style:italic;letter-spacing:4px;text-shadow:0 4px 30px #000}
+#bigtext small{font-size:22px;letter-spacing:1px;font-style:normal;font-weight:600;margin-top:6px}
+#err{position:fixed;left:10px;bottom:10px;color:#ff8080;font:12px monospace;white-space:pre-wrap;max-width:80vw;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud" class="hidden">
+  <div id="scope"></div>
+  <div id="notes"></div>
+  <div id="obj" class="hidden"></div>
+  <div id="tr">
+    <div id="stars"></div>
+    <div id="money">৳0</div>
+    <div id="clock"></div>
+    <div><div id="wbox"><img id="wicon" alt=""><div><div id="wname"></div><div id="wammo"></div></div></div></div>
+  </div>
+  <div id="big"></div>
+  <div id="speedo" class="hidden"><span id="kmh">0</span><small>km/h</small></div>
+  <div id="area"><div id="areaName"></div><div id="street"></div></div>
+  <div id="sub"></div>
+  <div id="prompt"></div>
+  <div id="cross"><i></i></div>
+  <div id="mmWrap"><canvas id="mm" width="528" height="384"></canvas><div id="bars"><div class="bar hp"><i id="hp"></i></div><div class="bar ar"><i id="ar"></i></div></div></div>
+</div>
+
+<div id="wheel" class="hidden"></div>
+<div id="shop" class="panel hidden"><h2 id="shopT"></h2><div class="sub" id="shopS"></div><div class="items" id="shopI"></div><div class="hint">Click or use W / S and Enter. Esc to close.</div></div>
+<div id="wardrobe" class="panel hidden"><h2 id="wardT">Wardrobe</h2><div class="sub" id="wardS"></div><div class="items" id="wardI"></div><div class="btnrow"><button class="btn" id="wardCancel">Cancel</button><button class="btn go" id="wardOk">Confirm</button></div><div class="hint">Hold A / D to turn around.</div></div>
+
+<div id="mapv" class="hidden"><canvas id="mapc"></canvas><div id="legend"></div><div id="maphint">Drag to pan, scroll to zoom, click to set a waypoint, right click to clear. M or Esc to close.</div><div id="maptip"></div></div>
+
+<div id="pause" class="overlay hidden"><div class="box"><h2>Paused</h2><div class="cols"><div class="side">
+  <button class="btn go" data-act="resume">Resume</button><button class="btn" data-tab="settings">Settings</button><button class="btn" data-tab="world">Weather and time</button><button class="btn" data-tab="controls">Controls</button><button class="btn" data-tab="stats">Stats</button><button class="btn" data-act="map">Map</button><button class="btn" data-act="save">Save game</button><button class="btn" data-act="boys">Boys Club</button><button class="btn" data-act="quit">Main menu</button>
+</div><div class="main" id="pauseMain"></div></div></div></div>
+
+<div id="boys" class="overlay hidden"><div class="box"><h2>Boys Club</h2><div id="boysBody"></div></div></div>
+
+<div id="menu" class="overlay hidden"><div class="inner">
+  <h1 class="logo">CANTONMENT<span>DHAKA STREETS</span></h1>
+  <p class="tag">An open world built on the real map of Dhaka Cantonment, Kachukhet, Banani, Mohakhali, Matikata and Manikdi.</p>
+  <button class="mbtn hidden" id="mContinue">Continue<small>Load your saved game</small></button>
+  <button class="mbtn" id="mNew">New Game<small>Create your character and start in Nirjhor</small></button>
+  <button class="mbtn" id="mBoys">Boys Club<small>Members only. Password required.</small></button>
+  <button class="mbtn" id="mSettings">Settings and controls</button>
+  <p class="tag" style="font-size:12px;opacity:.6;margin-top:18px">Map data © OpenStreetMap contributors (ODbL). A fan made, non commercial project. All vehicles, shops and story are fictional.</p>
+</div></div>
+
+<div id="loading"><h1 class="logo">CANTONMENT<span>DHAKA STREETS</span></h1><div id="loadbar"><i></i></div><div id="loadtxt">Starting up</div><div id="loadtip"></div></div>
+<div id="fade"></div>
+<div id="bigtext"></div>
+<div id="err"></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/CopyShader.js"></script><script src="vendor/LuminosityHighPassShader.js"></script><script src="vendor/Pass.js"></script><script src="vendor/EffectComposer.js"></script><script src="vendor/RenderPass.js"></script><script src="vendor/ShaderPass.js"></script><script src="vendor/MaskPass.js"></script><script src="vendor/UnrealBloomPass.js"></script>
+<script src="data/map.js"></script>
+<script src="js/util.js"></script><script src="js/textures.js"></script><script src="js/world.js"></script><script src="js/props.js"></script><script src="js/sky.js"></script>
+<script src="js/character.js"></script><script src="js/vehicles.js"></script><script src="js/fx.js"></script><script src="js/weapons.js"></script><script src="js/traffic.js"></script><script src="js/npc.js"></script>
+<script src="js/boys.js"></script><script src="js/interiors.js"></script><script src="js/audio.js"></script><script src="js/player.js"></script><script src="js/ui.js"></script><script src="js/game.js"></script><script src="js/main.js"></script>
+</body>
+</html>

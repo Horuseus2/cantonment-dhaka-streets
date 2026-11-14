@@ -1,0 +1,4 @@
+tools/node_modules/
+tools/osm_*.json
+tools/package-lock.json
+*.log
