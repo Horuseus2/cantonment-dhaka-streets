@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core'; import path from 'node:path'; import { pathToFileURL } from 'node:url';
+const out = process.argv[2]; const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
+const browser = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--window-size=1280,720', '--enable-gpu', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--allow-file-access-from-files'], defaultViewport: { width: 1280, height: 720 } });
+const page = await browser.newPage(); page.on('pageerror', e => console.log('[pageerror]', e.message));
+await page.goto(pathToFileURL(path.join(root, 'index.html')).href, { waitUntil: 'load', timeout: 120000 });
+await page.waitForFunction('window.DONE===true', { timeout: 180000, polling: 250 }); const wait = ms => new Promise(r => setTimeout(r, ms)); await wait(800);
+const top = sel => page.evaluate(sel => { const e = document.querySelector(sel), r = e.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return t === e || e.contains(t) ? 'on top' : 'COVERED by #' + (t.closest('[id]') || {}).id; }, sel);
+await page.click('#mBoys'); await wait(400); console.log('password box:', await top('#bpw'), '| unlock btn:', await top('#bgo'));
+await page.click('#bpw'); await page.keyboard.type('wrongpass'); await page.click('#bgo'); await wait(300); console.log('wrong pw msg:', await page.$eval('#bmsg', e => e.textContent));
+await page.$eval('#bpw', e => { e.value = ''; }); await page.click('#bpw'); await page.keyboard.type('Boysarecool69'); await page.keyboard.press('Enter'); await wait(500);
+console.log('unlocked:', await page.evaluate(() => G.boysUnlocked), '| roster cards:', await page.$$eval('.boy', a => a.length), '| first card:', await top('.boy'));
+await page.screenshot({ path: path.join(out, 'boys_from_menu.png') });
+await page.click('.boy[data-i="14"]'); await wait(3000); console.log('playing as:', await page.evaluate(() => [G.state.name, G.running, G.player.mode]));
+await page.evaluate(() => G.game.toMenu()); await wait(600); await page.click('#mSettings'); await wait(400); console.log('settings dialog:', await top('#pause button[data-act="resume"]'));
+await page.screenshot({ path: path.join(out, 'settings_from_menu.png') }); await browser.close();
