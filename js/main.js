@@ -102,7 +102,7 @@
     const In = G.input;
     if (G.running) {
       if (In.hit.KeyM && !U.menu && !U.ward && !U.paused && !U.boysOpen) U.toggleMap();
-      if (In.hit.Escape || In.hit.KeyP) { if (U.mapOpen) U.toggleMap(false); else if (!U.menu && !U.ward && !U.boysOpen && !(In.hit.KeyP && document.activeElement && document.activeElement.tagName === 'INPUT')) U.pause(!U.paused); }
+      if (In.hit.Escape || In.hit.KeyP) { if (U.mapOpen) U.toggleMap(false); else if (!U.menu && !U.ward && !U.boysOpen && !U.anaOpen && !U.mpOpen && !(In.hit.KeyP && document.activeElement && document.activeElement.tagName === 'INPUT')) U.pause(!U.paused); }
       if (In.hit.F5) { if (G.game.save(true)) U.notify('Game saved', '#58d26b'); }
       if (!U.blocking && !U.wheelOpen && (pl.mode === 'foot' || pl.mode === 'vehicle')) { if (In.wheel) pl.cycleWeapon(In.wheel > 0 ? 1 : -1); for (let i = 1; i <= 9; i++) if (In.hit['Digit' + i]) { const own = G.Weapons.ORDER.filter(id => pl.inv[id]); if (own[i - 1]) pl.selectWeapon(own[i - 1]); } }
     }

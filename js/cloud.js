@@ -84,6 +84,14 @@
     if (C.online) { try { const s = await tmo(C.db.ref('boysSave/' + i).once('value'), 6000); if (s.exists()) cloud = { t: s.val().t || 0, d: JSON.parse(s.val().d) }; } catch (e) { } }
     if (cloud && (!local || cloud.t >= (local.t || 0))) return cloud.d; return local ? local.d : null;
   };
+  // every member's latest save, for the analytics page (saves are readable by anyone with the game)
+  B.allSaves = async function () {
+    const n = G.BOYS.length, saves = []; for (let i = 0; i < n; i++) saves.push(store.get('ds_boysave_' + i));
+    if (!(await C.connect())) return { cloud: false, saves };
+    const got = await Promise.all(saves.map((_, i) => tmo(C.db.ref('boysSave/' + i).once('value'), 7000).then(s => s.exists() ? { t: s.val().t || 0, d: JSON.parse(s.val().d) } : null).catch(() => undefined)));
+    let ok = false; got.forEach((c, i) => { if (c !== undefined) ok = true; if (c && (!saves[i] || c.t >= (saves[i].t || 0))) saves[i] = c; });
+    return { cloud: ok, saves };
+  };
   let saveT = 0;
   B.putSave = function (i, data, force) {
     const t = Date.now(); store.set('ds_boysave_' + i, { t, d: data });

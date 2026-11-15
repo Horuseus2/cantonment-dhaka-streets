@@ -60,7 +60,7 @@
   Nt.shot = function (m, h, snd, big) { const now = performance.now(); if (now - Nt.shotT < 150) return; Nt.shotT = now; Nt.send('s', [Math.round(m.x * 10), Math.round(m.y * 10), Math.round(m.z * 10), Math.round(h.x * 10), Math.round(h.y * 10), Math.round(h.z * 10), snd, big ? 1 : 0]); };
   Nt.chat = function (text) { text = String(text).trim().slice(0, 140); if (!text) return; Nt.send('c', text); Nt.say(G.state.name, text, true); };
   Nt.say = function (who, text, me) { G.ui.chatLine(who, text, me); };
-  Nt.died = function () { const pl = G.player, k = pl.lastHitBy && performance.now() - pl.lastHitAt < 9000 ? pl.lastHitBy : null; Nt.deaths++; Nt.send('k', { k, n: k && Nt.remotes.get(k) ? Nt.remotes.get(k).name : '' }); pl.lastHitBy = null; G.ui.chatLine('', k && Nt.remotes.get(k) ? Nt.remotes.get(k).name + ' killed you' : 'You died', false, '#e5484d'); };
+  Nt.died = function () { const pl = G.player, k = pl.lastHitBy && performance.now() - pl.lastHitAt < 9000 ? pl.lastHitBy : null; Nt.deaths++; G.state.stats.pvpD = (G.state.stats.pvpD || 0) + 1; Nt.send('k', { k, n: k && Nt.remotes.get(k) ? Nt.remotes.get(k).name : '' }); pl.lastHitBy = null; G.ui.chatLine('', k && Nt.remotes.get(k) ? Nt.remotes.get(k).name + ' killed you' : 'You died', false, '#e5484d'); };
   function onEvent(snap) {
     const e = snap.val(); if (!e || e.u === C.uid) return; let d; try { d = JSON.parse(e.d); } catch (x) { return; } const from = Nt.remotes.get(e.u), pl = G.player, name = from ? from.name : 'Player';
     if (e.t === 's') { if (pl.mode === 'interior') return; const mx = d[0] / 10, my = d[1] / 10, mz = d[2] / 10, hx = d[3] / 10, hy = d[4] / 10, hz = d[5] / 10, dist = Math.hypot(mx - G.cam.pos.x, mz - G.cam.pos.z); if (dist > 320) return; G.fx.tracer(mx, my, mz, hx, hy, hz); let dx = hx - mx, dy = hy - my, dz = hz - mz; const l = Math.hypot(dx, dy, dz) || 1; G.fx.muzzle(mx, my, mz, dx / l, dy / l, dz / l, !!d[7]); G.audio.shot(d[6], dist); if (dist < 60) N.alarm(mx, mz, 45, 'npc'); }
@@ -68,7 +68,7 @@
     else if (e.t === 'vh') { if (d.v !== C.uid || !pl.vehicle) return; pl.lastHitBy = e.u; pl.lastHitAt = performance.now(); pl.vehicle.damage(d.d); }
     else if (e.t === 'x') { if (pl.mode === 'interior') return; pl.lastHitBy = e.u; pl.lastHitAt = performance.now(); G.fx.explosion(d[0], d[1], d[2], d[3] || 1, 'net'); }
     else if (e.t === 'c') Nt.say(name, String(d).slice(0, 140), false);
-    else if (e.t === 'k') { if (d.k === C.uid) { Nt.kills++; G.ui.chatLine('', 'You killed ' + name, false, '#58d26b'); if (G.audio) G.audio.blip(2); } else G.ui.chatLine('', d.k ? (d.n || 'Someone') + ' killed ' + name : name + ' died', false, '#9aa0a6'); }
+    else if (e.t === 'k') { if (d.k === C.uid) { Nt.kills++; G.state.stats.pvpK = (G.state.stats.pvpK || 0) + 1; G.ui.chatLine('', 'You killed ' + name, false, '#58d26b'); if (G.audio) G.audio.blip(2); } else G.ui.chatLine('', d.k ? (d.n || 'Someone') + ' killed ' + name : name + ' died', false, '#9aa0a6'); }
     else if (e.t === 'hn') { const dist = from ? from.near : 999; if (dist < 120) G.audio.horn(dist, d || 'car'); }
   }
 

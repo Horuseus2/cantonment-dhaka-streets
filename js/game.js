@@ -14,7 +14,7 @@
     if (G.state.boy >= 0) { G.boyAuth.putSave(G.state.boy, d, !!manual); return true; }
     try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch (e) { return false; }
   };
-  function resetWorld() { for (const v of V.list.slice()) v.remove(); for (const p of N.list.slice()) p.remove(); T.parked = 0; G.wanted.level = 0; G.wanted.kills = 0; Gm.mission = null; Gm.job = null; clearMarker(); U.objective(null); U.setWaypoint(null); if (pl.mode === 'interior') { I.clear(); G.activeScene = G.scene; } pl.mode = 'foot'; pl.vehicle = null; pl.ride = null; pl.dead = false; G.timeMul = 1; U.bigText(null); }
+  function resetWorld() { Gm.worth = undefined; for (const v of V.list.slice()) v.remove(); for (const p of N.list.slice()) p.remove(); T.parked = 0; G.wanted.level = 0; G.wanted.kills = 0; Gm.mission = null; Gm.job = null; clearMarker(); U.objective(null); U.setWaypoint(null); if (pl.mode === 'interior') { I.clear(); G.activeScene = G.scene; } pl.mode = 'foot'; pl.vehicle = null; pl.ride = null; pl.dead = false; G.timeMul = 1; U.bigText(null); }
   function begin(x, z, h) { pl.teleport(x, z, h); G.cam.yaw = h; G.cam.pitch = -0.1; G.running = true; U.showMainMenu(false); U.showHUD(true); U.weaponChanged(); U.lock(); if (G.audio) G.audio.init(); G.preload(x, z); nextMissionMarker(); if (G.net.pendingRoom) { const room = G.net.pendingRoom; G.net.pendingRoom = null; G.net.join(room).then(r => { if (r.ok) { U.notify('Connected to server "' + r.room + '". ' + r.count + ' of ' + G.net.max + ' players online.', '#58d26b'); U.notify('Press T to chat, hold Z for the player list.'); } else U.notify(r.why, '#e5484d'); }); } }
   const doorOut = (p, d) => ({ x: p.x + Math.sin(p.a) * (d || 1.6), z: p.z + Math.cos(p.a) * (d || 1.6), h: p.a });
   Gm.homePoi = () => G.state.boy >= 0 ? G.boys.house(G.state.boy) : W.pois.find(p => p.c === 'home');
@@ -40,6 +40,7 @@
     const o = doorOut(h, 2);
     if (d && d.p) { const p = d.p; Object.assign(pl, { health: Math.max(20, p.health), armor: p.armor, money: p.money, bank: p.bank, inv: p.inv, weapon: p.weapon, medkits: p.medkits || 0 }); pl.init(G.state.app); if (!G.net.pendingRoom && d.env) { G.env.time = d.env.time; G.env.day = d.env.day; G.env.setWeather(d.env.weather, true); } }
     else { Object.assign(pl, { health: 100, armor: 100, money: 500000, bank: 5000000, inv: { fist: { clip: 0, ammo: 0 } }, weapon: 'fist', medkits: 5 }); pl.init(G.state.app); if (b.army || /Navy/.test(b.role)) { pl.give('pistol', true); pl.give('carbine', true); } else pl.give('pistol', true); G.env.time = 9; G.env.setWeather('clear', true); }
+    G.state.stats.sessions = (G.state.stats.sessions || 0) + 1; Gm.worth = undefined;
     begin(o.x, o.z, o.h); G.boys.spawnCars(i); G.props.refreshSigns(); const ht = G.boys.homeType(i);
     U.bigLabel(b.name); U.notify((d ? 'Welcome back, ' : 'Playing as ') + b.name + '. ' + b.role + '.', '#f5c542');
     U.notify(b.villa ? 'This is your villa. Four cars and a bike are in the garage, the armory is by the left wall, and Zelda is somewhere in the garden.' : 'Your ' + ht + ' is behind you. The Boys Whip' + (b.cars.length ? ' and your own cars are' : ' is') + ' parked on the road outside.' + (b.boat ? ' Your patrol boat is at the dock on the lake.' : ''), '#f5c542');
@@ -125,6 +126,7 @@
   let lx = 0, lz = 0;
   Gm.update = function (dt) {
     if (ring && ring.visible) { ring.rotation.y += dt; ring.material.opacity = 0.3 + Math.sin(G.time * 4) * 0.1; }
+    { const st = G.state.stats, now = performance.now(), el = Math.min(1, (now - (Gm.clockT || now)) / 1000); Gm.clockT = now; if (G.running) st.playSec = (st.playSec || 0) + el; const nw = pl.money + pl.bank; if (Gm.worth !== undefined && nw > Gm.worth && nw - Gm.worth < 2e6) st.earned = (st.earned || 0) + (nw - Gm.worth); Gm.worth = nw; }
     const s = G.state.stats, d = Math.hypot(pl.pos.x - lx, pl.pos.z - lz); if (d < 30 && pl.mode !== 'interior') { if (pl.mode === 'vehicle') s.driven = (s.driven || 0) + d; else if (pl.mode === 'foot') s.walked = (s.walked || 0) + d; } lx = pl.pos.x; lz = pl.pos.z;
     Gm.autoT = (Gm.autoT || 0) + dt; if (Gm.autoT > 45 && !pl.dead && !Gm.mission && G.wanted.level === 0) { Gm.autoT = 0; Gm.save(); }
     if (pl.dead || pl.mode === 'interior') return;

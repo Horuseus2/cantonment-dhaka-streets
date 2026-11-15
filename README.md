@@ -39,6 +39,16 @@ Multiplayer runs on Firebase Realtime Database. The one time setup is in [Server
 
 After the club password, each member picks their own character and creates a personal password with a security question. From then on only that member can play that character, and money, weapons, garage and stats are saved to the account, so progress follows the member to any computer. Forgotten passwords are reset by answering the security question. Without a server connection the same thing works on one device only.
 
+## Boys Club analytics
+
+Any member with the club password can open **Analytics** from the Boys Club screen, or **Boys analytics** from the pause menu. It lists all members with:
+
+- **Playtime**, counted while the game is running, shown as ranked bars.
+- **Progress** out of 100%: story missions 25, money earned 15, jobs done 15, properties 15, vehicles bought 10, weapons owned 10, distance travelled 10.
+- Net worth, missions, player versus player kills, and when they last played. Members saved in the last two minutes show as online.
+
+Click a column heading to sort. Click a member for the breakdown behind their score and the rest of their stats. It refreshes every 30 seconds while open. Without the server it shows only what was played on that device.
+
 ## What is in it
 
 - **Real location.** 35,700 building footprints, 2,275 roads (Airport Road, Kurmitola Road, Mirpur Banani flyover, Dhaka Elevated Expressway), lakes, parks, the golf course, rail line, 60 real bus stops and the cantonment gates, converted from OpenStreetMap. The map is 3.5 km by 6.6 km at 1:1 scale.
