@@ -2,7 +2,7 @@
 // Enterable interiors: stores, restaurants, homes, mosques, banks, showrooms and more. Built procedurally per place.
 (function () {
   const G = window.G, GB = G.GB, col = G.col;
-  const I = G.interior = { active: false, colliders: [], spots: [], chars: [], spin: [], vehs: [], meshes: [] };
+  const I = G.interior = { active: false, colliders: [], spots: [], chars: [], spin: [], vehs: [], meshes: [], pivots: [], doors: [], levels: [], ramps: [] };
   const PK = 0.1; // price scale for big-ticket items
   I.init = function () {
     const sc = I.scene = new THREE.Scene(); sc.background = new THREE.Color(0x0a0a0c);
@@ -20,17 +20,17 @@
     T.marble = mk(x => { x.fillStyle = '#ece8e0'; x.fillRect(0, 0, 256, 256); x.strokeStyle = 'rgba(120,110,100,0.25)'; for (let k = 0; k < 30; k++) { x.beginPath(); let px = r() * 256, py = r() * 256; x.moveTo(px, py); for (let q = 0; q < 6; q++) { px += (r() - 0.5) * 80; py += (r() - 0.5) * 80; x.lineTo(px, py); } x.stroke(); } x.strokeStyle = 'rgba(0,0,0,0.2)'; x.strokeRect(0, 0, 128, 128); x.strokeRect(128, 128, 128, 128); });
   };
   class Kit {
-    constructor(x, z, rot) { this.x = x; this.z = z; this.rot = rot || 0; this.c = Math.cos(this.rot); this.s = Math.sin(this.rot); }
+    constructor(x, z, rot, y0) { this.x = x; this.z = z; this.rot = rot || 0; this.y0 = y0 || 0; this.c = Math.cos(this.rot); this.s = Math.sin(this.rot); }
     p(lx, lz) { return [this.x + lx * this.c + lz * this.s, this.z - lx * this.s + lz * this.c]; }
-    box(lx, ly, lz, sx, sy, sz, c, ry, rx) { const [x, z] = this.p(lx, lz); I.gb.box(x, ly, z, sx, sy, sz, col(c), this.rot + (ry || 0), rx); return this; }
-    cyl(lx, ly, lz, r, h, c, seg, rx, rz, rt) { const [x, z] = this.p(lx, lz); I.gb.cyl(x, ly, z, r, h, col(c), seg || 10, rx || 0, this.rot, rz || 0, rt); return this; }
-    sph(lx, ly, lz, sx, sy, sz, c) { const [x, z] = this.p(lx, lz); I.gb.sph(x, ly, z, sx, sy, sz, col(c), 8, this.rot); return this; }
-    glow(lx, ly, lz, sx, sy, sz, rgb) { const [x, z] = this.p(lx, lz); I.glow.box(x, ly, z, sx, sy, sz, rgb, this.rot); return this; }
-    solid(lx, lz, w, d) { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [a, b] of [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]]) { const [x, z] = this.p(lx + a, lz + b); x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); } I.colliders.push([x0, z0, x1, z1]); return this; }
-    spot(lx, lz, r, label, fn) { const [x, z] = this.p(lx, lz); const s = { x, z, r, label, fn }; I.spots.push(s); return s; }
-    npc(lx, lz, kind, pose, ry, app, y) { const ch = new G.Char.Character(app || G.Char.randomApp(kind)); const [x, z] = this.p(lx, lz); ch.root.position.set(x, y || 0, z); ch.root.rotation.y = this.rot + (ry || 0); I.scene.add(ch.root); const e = { ch, pose: pose || null, x, z }; I.chars.push(e); if (!pose) I.colliders.push([x - 0.25, z - 0.25, x + 0.25, z + 0.25]); return e; }
+    box(lx, ly, lz, sx, sy, sz, c, ry, rx) { const [x, z] = this.p(lx, lz); I.gb.box(x, ly + this.y0, z, sx, sy, sz, col(c), this.rot + (ry || 0), rx); return this; }
+    cyl(lx, ly, lz, r, h, c, seg, rx, rz, rt) { const [x, z] = this.p(lx, lz); I.gb.cyl(x, ly + this.y0, z, r, h, col(c), seg || 10, rx || 0, this.rot, rz || 0, rt); return this; }
+    sph(lx, ly, lz, sx, sy, sz, c) { const [x, z] = this.p(lx, lz); I.gb.sph(x, ly + this.y0, z, sx, sy, sz, col(c), 8, this.rot); return this; }
+    glow(lx, ly, lz, sx, sy, sz, rgb) { const [x, z] = this.p(lx, lz); I.glow.box(x, ly + this.y0, z, sx, sy, sz, rgb, this.rot); return this; }
+    solid(lx, lz, w, d) { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const [a, b] of [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]]) { const [x, z] = this.p(lx + a, lz + b); x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); } I.colliders.push([x0, z0, x1, z1, this.y0 - 0.5, this.y0 + 2.4]); return this; }
+    spot(lx, lz, r, label, fn) { const [x, z] = this.p(lx, lz); const s = { x, z, y: this.y0, r, label, fn }; I.spots.push(s); return s; }
+    npc(lx, lz, kind, pose, ry, app, y) { const ch = new G.Char.Character(app || G.Char.randomApp(kind)); const [x, z] = this.p(lx, lz); ch.root.position.set(x, (y || 0) + this.y0, z); ch.root.rotation.y = this.rot + (ry || 0); I.scene.add(ch.root); const e = { ch, pose: pose || null, x, z }; I.chars.push(e); if (!pose) I.colliders.push([x - 0.25, z - 0.25, x + 0.25, z + 0.25, this.y0 - 0.5, this.y0 + 2.4]); return e; }
   }
-  const K = (x, z, rot) => new Kit(x, z, rot);
+  const K = (x, z, rot, y0) => new Kit(x, z, rot, y0);
   // ---------- furniture ----------
   const PROD = ['#c0392b', '#e67e22', '#f1c40f', '#27ae60', '#2980b9', '#8e44ad', '#ecf0f1', '#e84393', '#16a085', '#d35400'];
   const F = {
@@ -47,7 +47,16 @@
     plant(k) { k.cyl(0, 0.22, 0, 0.2, 0.44, '#8a5a3c', 10, 0, 0, 0.16).sph(0, 0.85, 0, 0.36, 0.5, 0.36, '#2f6b2a').sph(0.15, 1.15, 0.05, 0.25, 0.3, 0.25, '#3f7f34').solid(0, 0, 0.4, 0.4); },
     rug(k, w, d, c, c2) { k.box(0, 0.012, 0, w, 0.02, d, c).box(0, 0.016, 0, w - 0.5, 0.02, d - 0.5, c2 || c); },
     desk(k, pc) { k.box(0, 0.74, 0, 1.4, 0.05, 0.7, '#7a6248').box(-0.62, 0.36, 0, 0.05, 0.72, 0.66, '#5a4634').box(0.62, 0.36, 0, 0.05, 0.72, 0.66, '#5a4634'); if (pc) { k.box(0, 1.05, -0.15, 0.6, 0.38, 0.04, '#111').glow(0, 1.05, -0.125, 0.54, 0.32, 0.01, [0.7, 0.9, 1.25]).box(0, 0.82, -0.15, 0.08, 0.14, 0.08, '#222').box(0, 0.775, 0.12, 0.44, 0.02, 0.14, '#222'); } k.solid(0, 0, 1.4, 0.7); },
-    wardrobe(k) { k.box(0, 1.05, 0, 1.6, 2.1, 0.6, '#6b4a2e').box(0, 1.05, 0.305, 0.02, 2.0, 0.01, '#3a2818').box(-0.1, 1.05, 0.32, 0.03, 0.2, 0.03, '#c8b070').box(0.1, 1.05, 0.32, 0.03, 0.2, 0.03, '#c8b070').solid(0, 0, 1.6, 0.6); },
+    wardrobe(k) { const WD = '#6b4a2e', IN = '#e9e2d2';
+      k.box(0, 1.075, -0.29, 1.8, 2.15, 0.04, IN).box(-0.88, 1.075, 0, 0.04, 2.15, 0.62, WD).box(0.88, 1.075, 0, 0.04, 2.15, 0.62, WD).box(0, 2.13, 0, 1.8, 0.05, 0.62, WD).box(0, 0.06, 0, 1.8, 0.12, 0.62, WD).box(0, 0.5, -0.01, 1.72, 0.03, 0.56, IN).box(0, 1.86, -0.01, 1.72, 0.03, 0.56, IN).cyl(0, 1.74, 0, 0.013, 1.7, '#c9c9c9', 6, 0, Math.PI / 2);
+      const C = ['#2c3e50', '#f2f2f2', '#c0392b', '#1f6f4a', '#e8d5b0', '#34495e', '#8e44ad', '#d35400', '#16a085', '#1a1a1a', '#89a8c9', '#f1c40f'];
+      for (let i = 0; i < 12; i++) { const x = -0.74 + i * 0.134, h = [0.62, 0.7, 0.95, 0.66, 1.0, 0.6][i % 6]; k.box(x, 1.7 - h / 2, 0.02, 0.07, h, 0.44, C[(i * 5 + 2) % C.length]).box(x, 1.71, 0.02, 0.012, 0.05, 0.3, '#bbb'); }
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3 + (i % 2); j++) k.box(-0.6 + i * 0.4, 0.545 + j * 0.055, 0, 0.32, 0.05, 0.38, C[(i * 3 + j * 2) % C.length]);
+      for (let i = 0; i < 5; i++) for (const o of [-0.06, 0.06]) k.box(-0.66 + i * 0.33 + o, 0.17, 0.08, 0.09, 0.09, 0.26, ['#1a1a1a', '#6d4c41', '#f2f2f2', '#c0392b', '#2c3e50'][i]);
+      for (let i = 0; i < 3; i++) k.box(-0.55 + i * 0.55, 1.97, 0, 0.36, 0.18, 0.4, ['#6d4c41', '#34495e', '#b7950b'][i]);
+      k.glow(0, 2.09, 0.1, 1.4, 0.02, 0.1, [1.3, 1.2, 1.0]).solid(0, 0, 1.8, 0.62);
+      for (const sd of [-1, 1]) { const g = new GB(); g.box(-sd * 0.445, 1.075, 0, 0.885, 2.1, 0.035, col(WD)); g.box(-sd * 0.445, 1.075, 0.02, 0.7, 1.8, 0.012, col('#7d5a3a')); g.box(-sd * 0.8, 1.05, 0.04, 0.025, 0.22, 0.03, col('#c8b070')); const m = new THREE.Mesh(g.build(true), I.mat); m.castShadow = true; const piv = new THREE.Group(); const q = k.p(sd * 0.89, 0.325); piv.position.set(q[0], k.y0, q[1]); piv.rotation.y = k.rot; piv.add(m); I.scene.add(piv); I.pivots.push(piv); I.meshes.push(m); I.doors.push({ g: piv, base: k.rot, dir: sd }); }
+      const f = k.p(0, 1.3); return { x: f[0], z: f[1], y: k.y0, face: k.rot }; },
     mirror(k, w, h) { k.box(0, 1.5, 0, w + 0.1, h + 0.1, 0.05, '#4a3826').glow(0, 1.5, 0.03, w, h, 0.01, [0.62, 0.7, 0.78]); },
     barberChair(k) { k.cyl(0, 0.2, 0, 0.3, 0.06, '#888', 12).cyl(0, 0.35, 0, 0.06, 0.4, '#aaa', 8).box(0, 0.6, 0, 0.56, 0.12, 0.56, '#7a1f24').box(0, 1.0, -0.26, 0.56, 0.75, 0.1, '#7a1f24').box(-0.3, 0.78, 0, 0.06, 0.06, 0.5, '#aaa').box(0.3, 0.78, 0, 0.06, 0.06, 0.5, '#aaa').solid(0, 0, 0.6, 0.6); },
     rack(k, w, r) { k.box(-w / 2, 0.8, 0, 0.04, 1.6, 0.04, '#999').box(w / 2, 0.8, 0, 0.04, 1.6, 0.04, '#999').box(0, 1.6, 0, w, 0.03, 0.03, '#bbb'); for (let x = -w / 2 + 0.12; x < w / 2 - 0.08; x += 0.14) k.box(x, 1.18, 0, 0.05, 0.75 + r() * 0.2, 0.44, PROD[(r() * PROD.length) | 0]); k.solid(0, 0, w, 0.5); },
@@ -59,7 +68,7 @@
     picture(k, w, h, c) { k.box(0, 1.7, 0, w + 0.08, h + 0.08, 0.04, '#3a2818').box(0, 1.7, 0.012, w, h, 0.03, c); },
     stove(k) { k.box(0, 0.45, 0, 2.4, 0.9, 0.6, '#8a8f94').box(0, 0.92, 0, 2.4, 0.04, 0.62, '#2a2a2e').cyl(-0.6, 1.0, 0, 0.2, 0.16, '#555', 10).cyl(0.3, 1.02, 0, 0.16, 0.2, '#b8bcc0', 10).box(0, 1.6, -0.2, 2.4, 0.5, 0.3, '#6b4a2e').solid(0, 0, 2.4, 0.6); },
     atm(k) { k.box(0, 0.9, 0, 0.8, 1.8, 0.6, '#2c3e50').glow(0, 1.25, 0.305, 0.5, 0.36, 0.01, [0.5, 0.9, 1.3]).box(0, 0.95, 0.31, 0.5, 0.14, 0.03, '#b8bcc0').solid(0, 0, 0.8, 0.6); },
-    stairs(k, n) { for (let i = 0; i < n; i++) k.box(0, 0.1 + i * 0.2, -i * 0.3, 1.3, 0.2, 0.32, '#8a6a48'); k.box(-0.68, 1.3, -n * 0.15, 0.05, 0.05, n * 0.36, '#3a2818', 0, 0.58).solid(0, -n * 0.15, 1.3, n * 0.3); }
+    stairs(k, n) { }
   };
   function fan(x, z, h) { const g = new THREE.Group(); const gb = new GB(); gb.cyl(0, 0.15, 0, 0.03, 0.3, col('#ddd'), 6); gb.cyl(0, 0, 0, 0.12, 0.08, col('#ddd'), 10); for (let i = 0; i < 3; i++) gb.box(Math.sin(i * 2.094) * 0.45, 0, Math.cos(i * 2.094) * 0.45, 0.14, 0.012, 0.7, col('#f0ece0'), i * 2.094); const m = new THREE.Mesh(gb.build(true), I.mat); g.add(m); g.position.set(x, h - 0.35, z); I.scene.add(g); I.spin.push(g); I.meshes.push(m); }
   function room(w, d, h, floor, wall, o) {
@@ -74,6 +83,7 @@
     // windows on side walls (emissive daylight)
     const nw = o.windows === undefined ? Math.max(1, Math.floor(d / 4.5)) : o.windows;
     for (let i = 0; i < nw; i++) { const z = -d / 2 + (i + 0.5) * d / nw; for (const s of [-1, 1]) { if (o.oneSide && s > 0) continue; k.box(s * (w / 2 - 0.01), 1.75, z, 0.06, 1.5, 1.7, '#e8e2d4'); I.win.box(s * (w / 2 - 0.045), 1.75, z, 0.02, 1.34, 1.54, [1, 1, 1]); k.box(s * (w / 2 - 0.05), 1.75, z, 0.04, 1.34, 0.05, '#e8e2d4').box(s * (w / 2 - 0.05), 1.75, z, 0.04, 0.05, 1.54, '#e8e2d4'); } }
+    if (o.upper) for (let i = 0; i < nw; i++) { const z = -d / 2 + (i + 0.5) * d / nw; for (const s of [-1, 1]) { k.box(s * (w / 2 - 0.01), o.upper + 1.75, z, 0.06, 1.5, 1.7, '#e8e2d4'); I.win.box(s * (w / 2 - 0.045), o.upper + 1.75, z, 0.02, 1.34, 1.54, [1, 1, 1]); k.box(s * (w / 2 - 0.05), o.upper + 1.75, z, 0.04, 1.34, 0.05, '#e8e2d4').box(s * (w / 2 - 0.05), o.upper + 1.75, z, 0.04, 0.05, 1.54, '#e8e2d4'); } }
     // ceiling lights
     const nl = Math.max(1, Math.min(3, Math.round(d / 6))); for (let i = 0; i < 3; i++) { const p = I.pts[i]; if (i < nl) { const z = -d / 2 + (i + 0.5) * d / nl; p.position.set(0, h - 0.5, z); p.visible = true; p.distance = Math.max(12, w * 1.3); k.glow(0, h - 0.03, z, o.lightW || 1.2, 0.05, 0.3, [1.5, 1.4, 1.2]); } else p.visible = false; }
     k.spot(0, d / 2 - 0.75, 1.1, 'Exit', () => G.game.exitInterior());
@@ -137,41 +147,81 @@
       F.desk(K(7.5, 4.5, Math.PI), true); F.chair(K(7.5, 5.3, Math.PI), '#2c3e50'); keeper(k, 7.5, 5.4, Math.PI, p, 8000); k.spot(7.5, 3.4, 1.6, 'Buy a vehicle', () => G.ui.openMenu(MENU.cardealer(p))); F.sofa(K(-7.5, 5, Math.PI), 2.6, '#2c3e50'); F.plant(K(-10, 7, 0)); F.plant(K(10, -7, 0)); },
     home(p, r, lux, single) { const w = lux ? 15 : 10, d = lux ? 16 : 12, k = room(w, d, lux ? 3.8 : 3.2, lux ? 'marble' : 'wood', lux ? '#f2ece0' : '#ece4d4', { tile: lux ? 3 : 2 });
       const sx = w / 2 - 1; F.sofa(K(-sx + 0.1, 1.5, Math.PI / 2), 2.8, lux ? '#f0e8d8' : '#5a6b7a'); F.tv(K(-sx + 5.2, 1.5, -Math.PI / 2)); F.table(K(-sx + 2.4, 1.5, 0), 0.8, 1.3, '#3a2e24'); F.rug(K(-sx + 2.6, 1.5, 0), 4.4, 3.4, lux ? '#7a1f24' : '#6a5a4a', lux ? '#a8322a' : '#8a7a68'); F.plant(K(-sx + 0.2, 4.6, 0));
-      F.bed(K(sx - 1.2, -d / 2 + 1.4, 0), lux ? '#7a1f24' : '#34608f', true); F.wardrobe(K(sx - 4, -d / 2 + 0.5, 0)); k.box(sx - 2.6, 0.3, -d / 2 + 0.5, 0.5, 0.6, 0.45, '#5a4634').glow(sx - 2.6, 0.85, -d / 2 + 0.5, 0.2, 0.3, 0.2, [1.4, 1.2, 0.8]);
+      F.bed(K(sx - 1.2, -d / 2 + 1.4, 0), lux ? '#7a1f24' : '#34608f', true); const wd = F.wardrobe(K(sx - 4, -d / 2 + 0.36, 0)); I.homeInfo = { k, ward: wd, bed: [sx - 1.2, -d / 2 + 2.9, 0], fridge: [-sx + 3.4, -d / 2 + 1.5, 0] }; k.box(sx - 2.6, 0.3, -d / 2 + 0.5, 0.5, 0.6, 0.45, '#5a4634').glow(sx - 2.6, 0.85, -d / 2 + 0.5, 0.2, 0.3, 0.2, [1.4, 1.2, 0.8]);
       F.stove(K(-sx + 1.4, -d / 2 + 0.5, 0)); F.fridge(K(-sx + 3.4, -d / 2 + 0.55, 0)); F.table(K(-sx + 2.4, -d / 2 + 3.2, 0), 1.8, 1.0); for (const s of [-1, 1]) { F.chair(K(-sx + 2.4 + s * 0.5, -d / 2 + 2.4, 0)); F.chair(K(-sx + 2.4 + s * 0.5, -d / 2 + 4.0, Math.PI)); }
       k.box(0.8, 1.6, -d / 2 + 2.6, 0.12, 3.2, 5, lux ? '#f2ece0' : '#ece4d4'); I.colliders.push([0.7, -d / 2, 0.92, -d / 2 + 5.1]); F.picture(K(-w / 2 + 0.08, -1.5, Math.PI / 2), 1.4, 0.9, '#34608f'); fan(-sx + 2.6, 1.5, lux ? 3.8 : 3.2);
       if (lux && single) { F.sofa(K(w / 2 - 0.7, 4.6, -Math.PI / 2), 2.4, '#3f5a3a'); F.rug(K(w / 2 - 2.6, 4.6, 0), 3, 3, '#3a4a2e', '#55683f'); F.picture(K(w / 2 - 0.08, 1.4, -Math.PI / 2), 1.6, 1, '#4b5a32'); k.box(w / 2 - 0.3, 1.1, 6.9, 0.4, 2.2, 0.4, '#3a2818').box(w / 2 - 0.3, 2.3, 6.9, 0.16, 0.5, 0.5, '#c8b070'); }
-      if (lux && !single) { F.stairs(K(w / 2 - 1.2, 5.5, 0), 12); k.box(w / 2 - 3.5, 2.5, 1.5, 7, 0.16, 0.16, '#3a2818').box(w / 2 - 3.5, 3.0, 1.5, 7, 0.06, 0.06, '#c8b070'); }
       if (lux) { F.desk(K(-4.4, 6.9, Math.PI), true); F.shelf(K(3.6, 7.7, Math.PI), 3, r, ['#d9b84a', '#c0c0c0', '#b87333', '#f4f4f4']); F.plant(K(w / 2 - 0.6, 1.2, 0)); F.picture(K(4, -d / 2 + 0.06, 0), 2, 1.2, '#c9a227'); }
       return k; },
     house(p, r) { const k = TPL.home(p, r, false); const home = r() < 0.6; if (home) { const e = k.npc(-1 + r() * 2, 3 + r(), r() < 0.5 ? 'female' : 'civ', null, Math.PI * r()); e.resident = true; }
       k.spot(3, -5.2, 1.5, 'Search for valuables', () => { if (G.state.robbed[p.id] === G.env.day) return G.ui.notify('Nothing left to take'); G.state.robbed[p.id] = G.env.day; const amt = 300 + Math.floor(r() * 4000); pl().money += amt; G.audio.pickup(); G.ui.notify('Stole ' + G.taka(amt), '#e67e22'); if (home) { G.ui.subtitle('Chor! Chor! Keu ase?!'); G.wanted.set(Math.max(G.wanted.level, 1)); } }); },
+    armory(p, r) { const k = room(12, 14, 3.6, 'concrete', '#4a4f55', { windows: 0, base: '#e0c23a', ceil: '#3a3d42', door: '#55595e' }); const Wp = G.Weapons;
+      const hang = (id, x, y, z, ry) => { const m = Wp.mesh(id); if (!m) return; m.position.set(x, y, z); m.rotation.y = ry; m.scale.setScalar(1.3); I.scene.add(m); I.extra.push(m); };
+      k.box(0, 1.9, -6.9, 11, 2.4, 0.08, '#2b2f33'); ['ak', 'carbine', 'lmg', 'sniper', 'shotgun', 'rpg'].forEach((id, i) => { hang(id, -4.2 + (i % 3) * 4.2, 2.6 - Math.floor(i / 3) * 0.95, -6.8, Math.PI / 2); });
+      for (const sd of [-1, 1]) { k.box(sd * 5.9, 1.8, -2, 0.08, 2.2, 7, '#2b2f33'); ['ak', 'carbine', 'shotgun', 'smg', 'smg'].forEach((id, i) => hang(id, sd * 5.8, 2.6 - (i % 2) * 0.9, -4.6 + i * 1.3, sd > 0 ? Math.PI : 0)); F.shelf(K(sd * 5.7, 4, -sd * Math.PI / 2), 3.4, r, ['#5a6b3a', '#3a4a2e', '#8a6a3a', '#222', '#c0392b']); }
+      F.table(K(0, -1, 0), 4.4, 1.4, '#3a3d42'); ['pistol', 'revolver', 'smg', 'grenade', 'pistol', 'bat'].forEach((id, i) => { const m = Wp.mesh(id); m.position.set(-1.8 + i * 0.72, 0.8, -1); m.rotation.set(0, Math.PI / 2, Math.PI / 2); m.scale.setScalar(1.25); I.scene.add(m); I.extra.push(m); });
+      for (const [x, z] of [[-4.6, 2.2], [-3.4, 2.2], [4, 2.4]]) K(x, z, 0).box(0, 0.3, 0, 1.0, 0.6, 0.7, '#4b5a32').box(0, 0.62, 0, 1.02, 0.04, 0.72, '#3a4426').solid(0, 0, 1, 0.7); F.mannequin(K(4.6, -5.6, -0.5), '#15171a'); F.mannequin(K(-4.6, -5.6, 0.5), '#15171a');
+      k.glow(0, 3.2, -6.84, 3, 0.25, 0.02, [1.4, 0.3, 0.2]);
+      k.spot(0, 0.3, 1.9, 'Arm up', () => G.ui.openMenu({ title: 'Private Armory', sub: 'Everything here is yours', items: [{ label: 'Take everything', desc: 'Every weapon with full ammunition, plus body armour', fn: () => { for (const id of Wp.ORDER) if (id !== 'fist') { pl().give(id, true); const d2 = Wp.DEFS[id], st = pl().inv[id]; if (d2.mag) { st.clip = d2.mag; st.ammo = Math.max(st.ammo, d2.type === 'thrown' || d2.type === 'heavy' ? 8 : d2.mag * 8); } } pl().armor = 100; G.audio.reload(); G.ui.notify('Fully armed', '#58d26b'); G.ui.weaponChanged(); } }, { label: 'Refill all ammunition', desc: 'Top up every weapon you carry', fn: () => { for (const id in pl().inv) { const d2 = Wp.DEFS[id], st = pl().inv[id]; if (d2.mag) { st.clip = d2.mag; st.ammo = Math.max(st.ammo, d2.type === 'thrown' || d2.type === 'heavy' ? 8 : d2.mag * 8); } } G.audio.reload(); G.ui.notify('Ammunition refilled', '#58d26b'); G.ui.weaponChanged(); } }, { label: 'Body armour', desc: 'Full protection', fn: () => { pl().armor = 100; G.audio.pickup(); } }].concat(Wp.ORDER.filter(id => id !== 'fist').map(id => { const d2 = Wp.DEFS[id]; return { icon: Wp.icons[id], label: () => d2.name + (pl().inv[id] ? '  (carried)' : ''), desc: d2.type === 'melee' ? 'Melee, damage ' + d2.dmg : `Damage ${d2.dmg}${d2.pellets ? ' x' + d2.pellets : ''}  |  ${d2.rpm} rpm  |  mag ${d2.mag}`, fn: () => { pl().give(id); const st = pl().inv[id]; if (d2.mag) { st.clip = d2.mag; st.ammo = Math.max(st.ammo, d2.type === 'thrown' || d2.type === 'heavy' ? 6 : d2.mag * 6); } G.audio.reload(); G.ui.weaponChanged(); } }; })) })); },
     studio() { const k = room(8, 8, 3.4, 'concrete', '#3a3d44', { windows: 0, ceil: '#2a2c30', base: '#222' }); k.box(0, 1.7, -3.9, 5, 3.4, 0.05, '#c9ccd2'); F.rug(K(0, 0, 0), 3, 3, '#2a2c30', '#44474e'); I.spots.length = 0; }
   };
-  function safehouse(p, r, lux, owner, single) {
-    const k = TPL.home(p, r, lux, single), d = I.d, w = I.w, sx = w / 2 - 1;
-    k.spot(sx - 1.2, -d / 2 + 2.9, 1.5, 'Sleep and save', () => G.game.sleep(8)); k.spot(sx - 4, -d / 2 + 1.5, 1.3, 'Wardrobe', () => G.ui.openWardrobe('full', 0));
-    k.spot(-sx + 3.4, -d / 2 + 1.5, 1.2, 'Eat from fridge', () => { pl().heal(40); G.audio.pickup(); G.ui.notify('Leftover biryani. Still good.'); });
+  // two storey home: double height living room at the front, a real upper floor at the back reached by stairs
+  function duplex(o) {
+    const w = o.w, d = o.d, H = 6.6, FY = 3.3, zs = 0.5, hw = w / 2, hd = d / 2, modern = o.modern;
+    const k = room(w, d, H, modern ? 'marble' : 'wood', modern ? '#f4f3ef' : '#f2ece0', { tile: 3, upper: FY, base: modern ? '#2b2f33' : '#5a4a3a' });
+    const sx0 = hw - 1.95, sx1 = hw - 0.32, zb = zs + 6.4, n = 17, run = (zb - zs) / n, ST = modern ? '#3a3d42' : '#8a6a48', RL = modern ? '#1c1f22' : '#3a2818';
+    k.box(0, FY - 0.13, (-hd + zs) / 2, w, 0.26, hd + zs, modern ? '#eceae4' : '#e6e0d2'); I.levels.push({ x0: -hw, z0: -hd, x1: hw, z1: zs, y: FY });
+    for (let i = 0; i < n; i++) { const hgt = (i + 1) / n * FY, z = zb - (i + 0.5) * run; k.box((sx0 + sx1) / 2, hgt - 0.09, z, sx1 - sx0, 0.18, run + 0.02, ST); if (modern) k.glow((sx0 + sx1) / 2, hgt - 0.19, z + run / 2, sx1 - sx0 - 0.1, 0.02, 0.02, [1.2, 1.1, 0.9]); else k.box((sx0 + sx1) / 2, (hgt - 0.18) / 2, z, sx1 - sx0, Math.max(0.02, hgt - 0.18), run + 0.02, '#6f563c'); }
+    I.ramps.push({ x0: sx0, x1: sx1, z0: zs, z1: zb, a: FY, b: 0 });
+    const sl = Math.hypot(zb - zs, FY), ang = Math.atan2(FY, zb - zs); k.box(sx0, FY / 2 + 0.95, (zs + zb) / 2, 0.06, 0.06, sl, RL, 0, ang); for (let i = 0; i <= 6; i++) { const t = i / 6; k.box(sx0, FY * (1 - t) + 0.48, zs + (zb - zs) * t, 0.04, 0.95, 0.04, RL); }
+    I.colliders.push([sx0 - 0.08, zs, sx0 + 0.08, zb - 0.8, -1, 7], [sx0, zs - 0.14, sx1, zs + 0.02, -1, 2.3]);
+    k.box((-hw + sx0) / 2, FY + 0.5, zs, sx0 + hw, 0.9, 0.04, '#b9ccd6').box((-hw + sx0) / 2, FY + 0.98, zs, sx0 + hw, 0.06, 0.08, RL); I.colliders.push([-hw, zs - 0.1, sx0, zs + 0.1, FY - 0.4, FY + 2.6]);
+    for (const z of [-hd + 1.5, -hd / 2]) I.glow.box(0, FY - 0.28, z, 1.2, 0.03, 0.3, [1.4, 1.3, 1.1]);
+    return { k, w, d, hw, hd, FY, zs, sx0, modern, U: (x, z, rot) => K(x, z, rot, FY) };
+  }
+  function homeDuplex(p, r, o) {
+    const D = duplex(o), k = D.k, hw = D.hw, hd = D.hd, U = D.U, m = D.modern, villa = o.villa, SO = m ? '#e9e6df' : '#f0e8d8', AC = m ? '#2b2f33' : '#7a1f24';
+    // ground floor, front: double height living room
+    F.tv(K(-hw + 0.45, 4.6, Math.PI / 2)); F.sofa(K(-hw + 5.6, 4.6, -Math.PI / 2), villa ? 4 : 3, SO); F.table(K(-hw + 3.3, 4.6, 0), 0.8, 1.5, '#2e2a26'); F.rug(K(-hw + 3.4, 4.6, 0), 5.4, 4.2, AC, m ? '#44484e' : '#a8322a'); F.sofa(K(-hw + 3.2, 7.6, Math.PI), 2.6, SO); F.plant(K(-hw + 0.6, 1.4, 0)); F.plant(K(-hw + 0.6, hd - 0.7, 0)); F.picture(K(-hw + 0.08, 4.6, Math.PI / 2), 0.1, 0.1, '#111');
+    // ground floor, under the upper level: kitchen and dining
+    F.stove(K(-hw + 1.7, -hd + 0.45, 0)); F.fridge(K(-hw + 3.7, -hd + 0.5, 0), m ? '#b9bcc0' : undefined); F.counter(K(-hw + 3, -hd + 3.4, 0), 3.4, m ? '#2b2f33' : '#6b4a2e'); for (const x of [-1, 0, 1]) F.chair(K(-hw + 3 + x * 0.9, -hd + 4.2, Math.PI), '#3a3d42');
+    F.table(K(1.5, -hd + 4, 0), villa ? 3.6 : 2.6, 1.1, m ? '#3a2e24' : '#8a6a48'); for (let i = 0; i < (villa ? 4 : 3); i++) { const x = 1.5 - (villa ? 1.35 : 0.9) + i * 0.9; F.chair(K(x, -hd + 3.1, 0), AC); F.chair(K(x, -hd + 4.9, Math.PI), AC); }
+    F.shelf(K(hw - 3.4, -hd + 0.4, 0), 3, r, ['#d9b84a', '#c0c0c0', '#b87333', '#f4f4f4', '#7a1f24']); F.picture(K(0.5, -hd + 0.06, 0), 2, 1.1, m ? '#1f4f9f' : '#c9a227'); fan(-hw + 3.4, 4.6, 6.6);
+    // upper floor: bedroom, wardrobe, study, lounge
+    F.bed(U(hw - 3.6, -hd + 1.4, 0), AC, true); const wd = F.wardrobe(U(-1.2, -hd + 0.36, 0)); if (villa) F.wardrobe(U(0.8, -hd + 0.36, 0)); U(hw - 1.6, -hd + 0.5, 0).box(0, 0.3, 0, 0.5, 0.6, 0.45, '#5a4634').glow(0, 0.85, 0, 0.2, 0.3, 0.2, [1.4, 1.2, 0.8]);
+    F.desk(U(-hw + 1.8, -hd + 0.55, 0), true); F.chair(U(-hw + 1.8, -hd + 1.4, Math.PI), '#1c1f22'); if (villa) { F.desk(U(-hw + 3.4, -hd + 0.55, 0), true); U(-hw + 0.5, -hd + 3.2, Math.PI / 2).box(0, 1.0, 0, 2.4, 2.0, 0.4, '#3a2e24').glow(0, 1.2, 0.21, 2.0, 1.2, 0.02, [0.5, 0.8, 1.3]).solid(0, 0, 2.4, 0.4); }
+    F.sofa(U(-hw + 4.6, -1.6, Math.PI), 2.6, SO); F.tv(U(-hw + 4.6, -4.9, 0)); F.rug(U(-hw + 4.6, -3.1, 0), 3.6, 2.6, AC, m ? '#44484e' : '#a8322a'); F.plant(U(hw - 0.6, -3.4, 0)); F.plant(U(-hw + 0.6, -0.2, 0)); F.picture(U(hw - 0.08, -hd + 4, -Math.PI / 2), 1.6, 1, '#34608f'); F.rug(U(hw - 3.6, -hd + 3.2, 0), 3, 1.6, '#e8e2d4');
+    if (villa) { const z = K(-hw + 1.2, hd - 1.2, 0); z.cyl(0, 0.07, 0, 0.42, 0.14, '#7a1f24', 14).cyl(0, 0.15, 0, 0.34, 0.06, '#f0e6d2', 14).cyl(0.75, 0.04, 0.1, 0.11, 0.07, '#c9ced2', 10).cyl(1.05, 0.04, 0.1, 0.11, 0.07, '#c9ced2', 10).box(0.4, 0.5, -0.3, 0.9, 0.05, 0.05, '#2b2f33'); z.box(0.4, 0.32, -0.33, 0.5, 0.2, 0.02, '#111').glow(0.4, 0.32, -0.315, 0.42, 0.13, 0.01, [1.3, 1.0, 0.5]);
+      F.counter(K(hw - 3.2, 3.2, 0), 3, '#1c1f22'); for (const x of [-1, 0, 1]) K(hw - 3.2 + x * 0.9, 4.1, 0).cyl(0, 0.38, 0, 0.17, 0.05, '#7a1f24', 10).cyl(0, 0.19, 0, 0.03, 0.38, '#aaa', 6); K(hw - 3.2, 2.3, 0).box(0, 1.5, 0, 2.6, 1.4, 0.25, '#2e2a26').glow(0, 1.5, 0.13, 2.4, 1.2, 0.01, [0.9, 0.7, 0.4]);
+      K(-4.2, hd - 0.45, Math.PI).box(0, 0.55, 0, 2.2, 1.1, 0.5, '#1a2a3a').glow(0, 0.62, 0.26, 2.0, 0.8, 0.01, [0.3, 0.9, 1.4]).solid(0, 0, 2.2, 0.5); }
+    I.homeInfo = { k, ward: wd, bed: [hw - 3.6, -hd + 2.9, D.FY], fridge: [-hw + 3.7, -hd + 1.5, 0] }; return k;
+  }
+  function safehouse(p, r, type, owner) {
+    const k = type === 'duplex' ? homeDuplex(p, r, { w: 16, d: 18 }) : type === 'villa' ? homeDuplex(p, r, { w: 20, d: 22, modern: true, villa: true }) : TPL.home(p, r, type === 'bungalow', true), d = I.d, H = I.homeInfo;
+    K(H.bed[0], H.bed[1], 0, H.bed[2]).spot(0, 0, 1.6, 'Sleep and save', () => G.game.sleep(8)); K(H.ward.x, H.ward.z, 0, H.ward.y).spot(0, 0, 1.5, 'Open wardrobe', () => I.useWardrobe(H.ward));
+    k.spot(H.fridge[0], H.fridge[1], 1.2, 'Eat from fridge', () => { pl().heal(40); G.audio.pickup(); G.ui.notify('Leftover biryani. Still good.'); });
     k.spot(-1.6, d / 2 - 1.2, 1.2, 'Garage: call a vehicle', () => G.ui.openMenu(garageMenu(p, owner)));
     k.box(-2.3, 1.2, d / 2 - 0.05, 0.5, 0.7, 0.06, '#222').glow(-2.3, 1.2, d / 2 - 0.09, 0.4, 0.56, 0.01, [0.4, 1.2, 0.7]);
   }
   function garageMenu(p, boy) {
     const items = [];
-    if (boy !== undefined) { const b = G.BOYS[boy]; for (const id of ['boyswhip'].concat(b.cars)) items.push({ label: G.Veh.DEFS[id].name + (id === 'boyswhip' ? '  (signature car)' : ''), desc: 'Top speed ' + Math.round(G.Veh.DEFS[id].max * 3.6) + ' km/h. Parked outside.', fn: () => { G.game.deliver(id, null, p, -1, boy); G.ui.closeMenu(); } }); }
+    if (boy !== undefined) { const b = G.BOYS[boy], ids = ['boyswhip'].concat(b.cars); ids.forEach((id, n) => items.push({ label: G.Veh.DEFS[id].name + (id === 'boyswhip' ? '  (signature car)' : ''), desc: 'Top speed ' + Math.round(G.Veh.DEFS[id].max * 3.6) + ' km/h. ' + (b.villa ? 'Parked in its garage bay.' : 'Parked outside.'), fn: () => { if (b.villa && G.estate.S) { G.estate.park(id, G.boys.bayOf(boy, id), boy); G.ui.notify(G.Veh.DEFS[id].name + ' is back in the garage', '#58d26b'); } else G.game.deliver(id, null, p, -1, boy); G.ui.closeMenu(); } }));
+      if (b.boat) items.push({ label: 'Navy Patrol Boat', desc: 'Moored at your dock on the lake behind the house.', fn: () => { G.estate.spawnBoat(boy); G.ui.notify('The patrol boat is waiting at the dock', '#58d26b'); G.ui.closeMenu(); } }); }
     G.state.garage.forEach((g, i) => items.push({ label: G.Veh.DEFS[g.id].name, desc: 'Your vehicle. Delivered outside.', fn: () => { G.game.deliver(g.id, g.color, p, i); G.ui.closeMenu(); } }));
     if (G.boysUnlocked && boy === undefined) items.push({ label: 'Boys Whip  (signature car)', desc: 'Boys Club members only. Delivered outside.', fn: () => { G.game.deliver('boyswhip', null, p, -1); G.ui.closeMenu(); } });
     if (!items.length) items.push({ label: 'No vehicles yet', desc: 'Buy one at a car showroom (🚗 on the map)', fn: () => { } });
-    return { title: 'Garage', sub: 'Choose a vehicle to bring outside', items };
+    return { title: 'Garage', sub: 'Choose a vehicle to bring out', items };
   }
   I.build = function (poi) {
     I.clear(); I.active = true; I.poi = poi; I.peace = false; I.gb = new GB(); I.glow = new GB(); I.win = new GB(); I.extra = []; I.robT = 0;
     const r = G.rng(poi.id * 97 + 5); let c = poi.c;
-    if (c === 'vip') { const i = +poi.n, b = G.BOYS[i], mine = G.state.boy === i; safehouse(poi, r, true, mine ? i : undefined, !!b.army);
+    if (c === 'vip') { const i = +poi.n, b = G.BOYS[i], mine = G.state.boy === i; safehouse(poi, r, b.villa ? 'villa' : b.army ? 'bungalow' : 'duplex', mine ? i : undefined);
       if (!mine) { I.spots = I.spots.filter(s => s.label === 'Exit'); const e = K(0, 0, 0).npc(-1.5, 3.2, 'civ', null, 2.4, b.app); K(0, 0, 0).spot(-1.5, 4, 1.8, 'Talk to ' + b.name.split(' ')[0], () => G.ui.subtitle(b.name.split(' ')[0] + ': ' + G.pick(['Ki obostha bhai! Boys are cool, always.', 'Whip ta niye ber hobi naki aaj?', 'Bosh, cha khaye ja.', 'Ei cantonment e amader moto keu nai.']))); }
       const k = K(0, 0, 0); k.box(-I.w / 2 + 0.07, 2.6, 4, 0.04, 0.5, 2.2, '#0b0b0d', 0).glow(-I.w / 2 + 0.1, 2.6, 4, 0.02, 0.36, 2.0, [1.3, 1.0, 0.25]); }
-    else if (c === 'home') safehouse(poi, r, false);
-    else if (c === 'property') safehouse(poi, r, /Penthouse|House/.test(poi.n));
+    else if (c === 'home') safehouse(poi, r, 'flat');
+    else if (c === 'property') safehouse(poi, r, /Penthouse|House/.test(poi.n) ? 'duplex' : 'flat');
     else (TPL[c] || TPL.store)(poi, r);
+    if (c === 'armory') I.peace = false;
     const add = (gb, mat, sh) => { if (!gb.vc) return; const m = new THREE.Mesh(gb.build(true), mat); m.castShadow = m.receiveShadow = !!sh; I.scene.add(m); I.meshes.push(m); };
     add(I.gb, I.mat, true); add(I.glow, I.glowMat); add(I.win, I.winMat);
     for (const e of I.chars) e.ch.update(1, { pose: e.pose });
@@ -182,11 +232,16 @@
     if (I.floorTex) { I.floorTex.dispose(); I.floorTex = null; }
     for (const e of I.chars) e.ch.dispose(); I.chars.length = 0; for (const g of I.spin) I.scene.remove(g); I.spin.length = 0;
     for (const v of I.vehs) { I.scene.remove(v.group); } I.vehs.length = 0; if (I.extra) for (const m of I.extra) I.scene.remove(m);
+    for (const g of I.pivots) I.scene.remove(g); I.pivots.length = 0; I.doors.length = 0; I.levels.length = 0; I.ramps.length = 0; I.doorOpen = 0; I.homeInfo = null;
     I.colliders.length = 0; I.spots.length = 0; I.active = false;
   };
-  I.collide = function (P, rad) { const b = I.bounds; P.x = G.clamp(P.x, b.x0, b.x1); P.z = G.clamp(P.z, b.z0, b.z1); for (const c of I.colliders) { const cx = G.clamp(P.x, c[0], c[2]), cz = G.clamp(P.z, c[1], c[3]); let dx = P.x - cx, dz = P.z - cz; const d = Math.hypot(dx, dz); if (d < rad) { if (d < 1e-4) { const l = P.x - c[0], rr = c[2] - P.x, t = P.z - c[1], bb = c[3] - P.z, m = Math.min(l, rr, t, bb); if (m === l) P.x = c[0] - rad; else if (m === rr) P.x = c[2] + rad; else if (m === t) P.z = c[1] - rad; else P.z = c[3] + rad; } else { P.x = cx + dx / d * rad; P.z = cz + dz / d * rad; } } } };
+  I.collide = function (P, rad, y) { y = y || 0; const b = I.bounds; P.x = G.clamp(P.x, b.x0, b.x1); P.z = G.clamp(P.z, b.z0, b.z1); for (const c of I.colliders) { if (c.length > 4 ? (y < c[4] || y > c[5]) : y > 2.4) continue; const cx = G.clamp(P.x, c[0], c[2]), cz = G.clamp(P.z, c[1], c[3]); let dx = P.x - cx, dz = P.z - cz; const d = Math.hypot(dx, dz); if (d < rad) { if (d < 1e-4) { const l = P.x - c[0], rr = c[2] - P.x, t = P.z - c[1], bb = c[3] - P.z, m = Math.min(l, rr, t, bb); if (m === l) P.x = c[0] - rad; else if (m === rr) P.x = c[2] + rad; else if (m === t) P.z = c[1] - rad; else P.z = c[3] + rad; } else { P.x = cx + dx / d * rad; P.z = cz + dz / d * rad; } } } };
+  // floor height under a point, for interiors with stairs and upper floors
+  I.groundY = function (x, z, y) { let best = 0; for (const L of I.levels) if (x >= L.x0 && x <= L.x1 && z >= L.z0 && z <= L.z1 && L.y <= y + 0.7 && L.y > best) best = L.y; for (const R of I.ramps) if (x >= R.x0 && x <= R.x1 && z >= R.z0 && z <= R.z1) { const h = R.a + (R.b - R.a) * (z - R.z0) / (R.z1 - R.z0); if (h <= y + 0.7 && h > best) best = h; } return best; };
+  I.useWardrobe = function (w) { const p = pl(); p.pos.x = w.x; p.pos.z = w.z; p.pos.y = w.y; I.wardFace = w.face; G.ui.openWardrobe('full', 0); };
   I.update = function (dt) {
     const p = pl(), E = G.env; for (const g of I.spin) g.rotation.y += dt * 9;
+    I.doorOpen = G.damp(I.doorOpen || 0, G.ui.ward ? 1 : 0, 5, dt); for (const d of I.doors) d.g.rotation.y = d.base + d.dir * I.doorOpen * 1.95;
     const day = E.dayF; I.winMat.color.setRGB(0.08 + day * 1.5, 0.1 + day * 1.55, 0.16 + day * 1.6); I.hemi.intensity = 0.5 + day * 0.2; I.sun.target.position.set(0, 0, 0);
     for (const e of I.chars) { const d = Math.hypot(e.x - p.pos.x, e.z - p.pos.z); let pose = e.pose; if (e.scared > 0) { e.scared -= dt; pose = 'handsup'; } if (!e.pose && d < 5 && !(e.scared > 0)) e.ch.root.rotation.y = G.angLerp(e.ch.root.rotation.y, Math.atan2(p.pos.x - e.x, p.pos.z - e.z), 1 - Math.exp(-4 * dt)); e.ch.update(dt, { pose, armed: e.ch.gun ? (e.ch.gunLong ? 2 : 1) : 0 }); }
     // armed robbery by aiming at the keeper

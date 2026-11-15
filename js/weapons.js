@@ -92,7 +92,7 @@
       const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * spread, ca = Math.cos(a) * r, sa = Math.sin(a) * r;
       let dx = d.x + ux * ca - d.x * d.y * sa, dy = d.y + sa * (1 - d.y * d.y), dz = d.z + uz * ca - d.z * d.y * sa; const l = Math.hypot(dx, dy, dz); dx /= l; dy /= l; dz /= l;
       const h = Wp.trace(sx, sy, sz, dx, dy, dz, def.range, pl.vehicle, null);
-      if (i < 3) G.fx.tracer(mz.x, mz.y, mz.z, h.x, h.y, h.z);
+      if (i < 3) G.fx.tracer(mz.x, mz.y, mz.z, h.x, h.y, h.z); if (i === 0 && G.net && G.net.active) G.net.shot(mz, h, def.snd, def.type === 'shotgun' || def.type === 'sniper');
       Wp.impact(h, def.dmg * (1 - 0.4 * h.t / def.range), dx, dy, dz, 'player');
     }
     G.fx.muzzle(mz.x, mz.y, mz.z, d.x, d.y, d.z, def.type === 'shotgun' || def.type === 'sniper');

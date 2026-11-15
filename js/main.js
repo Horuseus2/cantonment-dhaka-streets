@@ -45,6 +45,7 @@
     const prog = (p, t) => U.loading(p, t);
     prog(0.02, 'Painting textures'); await G.frame(); await G.frame(); G.initTextures();
     await W.init(scene, prog);
+    G.estate.init(scene); G.cloud.connect();
     prog(0.38, 'Planting trees and street lights'); await G.frame(); G.props.init(scene);
     prog(0.5, 'Setting up sky and weather'); await G.frame(); E.init(scene, renderer); I.init(); G.fx.init(scene); G.Weapons.init(); G.Veh.initMats();
     prog(0.62, 'Drawing the map'); await G.frame(); U.buildBase();
@@ -91,7 +92,8 @@
   function sim(dt) {
     const interior = pl.mode === 'interior';
     pl.update(dt);
-    if (!interior) { const px = pl.pos.x, pz = pl.pos.z; G.traffic.update(dt, px, pz); G.npc.update(dt, px, pz); G.Weapons.update(dt); } else { I.update(dt); G.wanted.seenT += dt; }
+    if (!interior) { const px = pl.pos.x, pz = pl.pos.z; G.traffic.update(dt, px, pz); G.npc.update(dt, px, pz); G.Weapons.update(dt); } else { I.update(dt); G.wanted.seenT += dt; if (G.net.active) for (const r of G.net.remotes.values()) r.update(dt); }
+    G.estate.update(dt);
     G.fx.update(dt); G.game.update(dt);
   }
   function frame(now) {
@@ -106,19 +108,20 @@
     }
     const wheel = U.update(dt);
     const interior = pl.mode === 'interior';
-    if (G.running && !U.paused && !U.mapOpen) {
+    const online = G.net.active; if (online) G.net.update(dt);
+    if (G.running && ((!U.paused && !U.mapOpen) || online)) {
       const mul = (wheel ? 0.25 : 1) * (G.timeMul || 1) * (pl.dead ? 0.5 : 1); let sdt = dt * mul; G.time += sdt; const n = Math.max(1, Math.ceil(sdt / 0.034)); for (let i = 0; i < n; i++) sim(sdt / n);
       E.warp = G.timeMul > 1 ? G.timeMul : 1;
     } else if (!G.running) { G.time += dt; G.traffic.update(dt, G.menuSpot.x, G.menuSpot.z); G.npc.update(dt, G.menuSpot.x, G.menuSpot.z); }
     camUpdate(dt);
     if (!interior) { const fx = G.running ? pl.pos.x : G.menuSpot.x, fz = G.running ? pl.pos.z : G.menuSpot.z; W.update(fx, fz, 1); G.props.update(dt, fx, fz, E.night, G.time); }
-    E.update(U.paused ? 0 : dt * (G.timeMul > 1 ? G.timeMul : 1), camera, focus, interior);
+    E.update(U.paused && !online ? 0 : dt * (G.timeMul > 1 ? G.timeMul : 1), camera, focus, interior);
     slow += dt; if (slow > 0.25) { slow = 0; W.setNight(E.night); W.setWet(E.wet); W.waterNormal2.offset.x += 0.004; W.waterNormal2.offset.y += 0.0025; }
     W.waterNormal2.offset.x += dt * 0.012; W.waterNormal2.offset.y += dt * 0.007;
     { const hv = pl.vehicle, hl = G.headlight; if (hv && hv.lights && !hv.dead && !interior) { hl.intensity = 1.2 + E.night * 2.6; hl.position.set(hv.x + hv.fx * hv.def.L * 0.45, hv.y + 0.75, hv.z + hv.fz * hv.def.L * 0.45); hl.target.position.set(hv.x + hv.fx * 30, hv.y - 0.4, hv.z + hv.fz * 30); } else hl.intensity = 0; }
     // audio
     const v = pl.vehicle || pl.ride; let siren = 0; if (G.Veh.sirenAny) { let nd = 999; for (const o of G.Veh.list) if (o.siren && !o.dead) nd = Math.min(nd, o.near); siren = G.clamp(1.2 - nd / 160, 0, 1); }
-    G.audio.update(dt, { paused: U.paused || !G.running, engine: G.running && !!v && !v.dead && (pl.mode === 'vehicle' || pl.mode === 'ride' || pl.mode === 'bus'), rpm: v ? G.clamp(Math.abs(v.speed) / v.def.max, 0, 1) * 0.75 + ((Math.abs(v.speed) * 0.35) % 1) * 0.12 : 0, load: v && pl.mode === 'vehicle' ? Math.abs(pl.ctl.throttle) : 0.3, kind: v ? (v.id === 'rickshaw' ? 'rickshaw' : v.def.kind === 'car' && v.def.max > 60 ? 'bike' : v.def.kind) : 'car', skid: v && pl.mode === 'vehicle' ? (v.slip - 2.5) / 6 : 0, rain: E.rain, wind: E.wind, speed: pl.speed, night: E.night, indoors: interior, siren: interior ? 0 : siren });
+    G.audio.update(dt, { paused: (U.paused && !online) || !G.running, engine: G.running && !!v && !v.dead && (pl.mode === 'vehicle' || pl.mode === 'ride' || pl.mode === 'bus' || pl.mode === 'mpride'), rpm: v ? G.clamp(Math.abs(v.speed) / v.def.max, 0, 1) * 0.75 + ((Math.abs(v.speed) * 0.35) % 1) * 0.12 : 0, load: v && pl.mode === 'vehicle' ? Math.abs(pl.ctl.throttle) : 0.3, kind: v ? (v.id === 'rickshaw' ? 'rickshaw' : v.def.kind === 'car' && v.def.max > 60 ? 'bike' : v.def.kind) : 'car', skid: v && pl.mode === 'vehicle' ? (v.slip - 2.5) / 6 : 0, rain: E.rain, wind: E.wind, speed: pl.speed, night: E.night, indoors: interior, siren: interior ? 0 : siren });
     // render
     const sc = G.activeScene; renderer.toneMappingExposure = interior ? 1.05 : E.exposure;
     if (composer && G.quality > 0) { renderPass.scene = sc; bloom.threshold = interior ? 1.0 : E.bloomThreshold; bloom.strength = interior ? 0.3 : E.bloomStrength; const u = finalPass.uniforms; u.uExposure.value = interior ? 1.05 : E.exposure; u.uTime.value = now * 0.001; u.uHurt.value = pl.hurtT * 0.8 + (pl.health < 25 && G.running ? 0.25 + Math.sin(now * 0.006) * 0.12 : 0); u.uWet.value = interior ? 0 : E.rain; composer.render(); }

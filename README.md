@@ -19,7 +19,25 @@ Or download the repo and open `index.html` in Chrome or Edge (double click works
 | M | Full map: drag, zoom, click to set a GPS waypoint |
 | H, L, Q, V | Horn (first aid on foot), headlights, siren, camera |
 | J | Start a job (taxi / CNG passengers, bus route, bike food delivery) |
+| T, Z (hold) | Multiplayer chat, player list |
 | F5, Esc | Quick save, pause (settings, weather and time controls) |
+
+## Multiplayer
+
+Click **Multiplayer** on the main menu, type a server name and share that name with friends. Everyone who enters the same name plays in the same city in real time, up to 18 players per server.
+
+- You see each other walk, drive, aim, shoot and change clothes. Name tags float over players and they show on the minimap and the big map.
+- Players can damage each other. Kills and deaths are on the player list (hold **Z**). Press **T** to chat.
+- Press **E** next to a friend's vehicle to ride along as a passenger.
+- Walk into the same shop or house and you are in the same room together.
+- Clock and weather come from the server clock, so every player sees the same sky.
+- Traffic, pedestrians and police are simulated separately on each computer. A car a friend steps out of stays on your screen as an ordinary parked car.
+
+Multiplayer runs on Firebase Realtime Database. The one time setup is in [Server setup](#server-setup).
+
+## Boys Club accounts
+
+After the club password, each member picks their own character and creates a personal password with a security question. From then on only that member can play that character, and money, weapons, garage and stats are saved to the account, so progress follows the member to any computer. Forgotten passwords are reset by answering the security question. Without a server connection the same thing works on one device only.
 
 ## What is in it
 
@@ -33,7 +51,8 @@ Or download the repo and open `index.html` in Chrome or Edge (double click works
 - **Wanted system**: police outside, Military Police inside the cantonment, special forces at higher levels.
 - **Missions, jobs, properties, garage, bank, save game.**
 - **Sound**: engines, horns, gunfire, rain, thunder, sirens, footsteps and ambience, all synthesised with WebAudio.
-- **Boys Club**: a password locked roster of extra playable characters with their own houses and cars.
+- **Boys Club**: a password locked roster of extra playable characters with their own houses and cars, including a navy officer's lakeside house with a patrol boat you can drive on the lake, and a gated villa with guard towers, a sliding gate, a five bay garage, a private armory and a cat called Zelda.
+- **Two storey homes** with stairs you walk up, and wardrobes that open to show the clothes while you change outfit.
 
 ## Graphics
 
@@ -44,12 +63,26 @@ Three.js with physically based materials, soft shadows, a procedural sky with vo
 ```
 index.html        page, HUD and menus
 data/map.js       baked game map (generated)
-js/               game code (world, vehicles, characters, weapons, AI, UI, audio)
+js/               game code (world, vehicles, characters, weapons, AI, UI, audio, multiplayer)
+firebase/         database security rules and emulator config
 vendor/           three.js r147 and post processing passes
 tools/            map builder (OpenStreetMap to data/map.js) and test scripts
 ```
 
 To rebuild the map: `cd tools && node fetch.mjs && node build-map.mjs`.
+
+## Server setup
+
+Multiplayer and cloud saves need a Firebase Realtime Database. This is done once by the owner of the Firebase project.
+
+1. Open the Firebase console for the project, go to **Build > Realtime Database** and press **Create Database**. Pick **Singapore (asia-southeast1)** and **locked mode**.
+2. Run `multiplayer-setup.bat` (Windows) or, from the `firebase` folder, `npx firebase-tools deploy --only database --project <project id>`. This uploads `firebase/database.rules.json`.
+
+The rules keep password hashes unreadable (the database compares them itself), let a character be claimed only once, and accept a save only together with the right password. The web config in `js/cloud.js` holds public identifiers, not secrets.
+
+Free plan limits: 100 simultaneous connections and 10 GB of download a month. Traffic grows with the square of the player count: about 6 players use roughly 150 MB an hour, a full 18 player server about 1.2 GB an hour.
+
+To test without touching the real database: start `npx firebase-tools emulators:start --only database --project demo-bta` in the `firebase` folder, then run `node tools/mptest.mjs <dir>` and `node tools/uitest2.mjs <dir>`.
 
 ## Credits
 

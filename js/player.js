@@ -30,6 +30,7 @@
     const v = pl.vehicle; if (!v) return; const sp = Math.hypot(v.vx, v.vz);
     let ok = false, x, z; for (const [sx, sz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { x = v.x + v.fz * sx * (v.def.W / 2 + 0.8) + v.fx * sz * (v.def.L / 2 + 0.8); z = v.z - v.fx * sx * (v.def.W / 2 + 0.8) + v.fz * sz * (v.def.L / 2 + 0.8); if (W.buildingAt(x, z) < 0) { ok = true; break; } }
     if (!ok) { x = v.x; z = v.z; }
+    if (v.def.kind === 'boat' && G.estate.dock) { const dk = G.estate.dock; if (Math.hypot(dk.ex - v.x, dk.ez - v.z) < 14) { x = dk.ex; z = dk.ez; } }
     G.scene.add(pl.ch.root); pl.pos.x = x; pl.pos.z = z; pl.pos.y = v.y; pl.heading = v.h; pl.vy = 0; pl.speed = 0; pl.mode = 'foot'; pl.vehicle = null; v.driver = null; v.brake = false; pl.selectWeapon(pl.weapon, true);
     if (sp > 6 || force) { pl.damage((sp - 4) * 2.2, null); pl.vy = 3; }
     if (G.audio) G.audio.cardoor(); if (G.game.onExitVehicle) G.game.onExitVehicle(v);
@@ -46,21 +47,24 @@
     if (c === 'tea') return { label: 'Buy from ' + p.n, fn: () => G.ui.openMenu(I.MENU.tea(p)) };
     if (c === 'atm') return { label: 'Use ATM', fn: () => G.ui.openMenu(I.MENU.bank(p)) };
     if (c === 'garage' || c === 'fuel') return { label: p.n + ': drive a vehicle here for service', fn: () => G.ui.notify('Bring a vehicle to the road in front and press E') };
-    if (c === 'vip') { if (!G.boysUnlocked) return { label: 'Private residence (Boys Club members only)', fn: () => G.ui.notify('Locked. Enter the Boys Club password from the pause menu.', '#c9a227') }; return { label: 'Enter ' + G.BOYS[+p.n].name + "'s " + (G.BOYS[+p.n].army ? 'bungalow' : 'duplex'), fn: () => G.game.enterInterior(p) }; }
+    if (c === 'armory') { if (G.state.boy !== 14) return { label: 'Private armory (owner only)', fn: () => G.ui.notify('Locked. Only the owner of the villa can open the armory.', '#c9a227') }; return { label: 'Enter the armory', fn: () => G.game.enterInterior(p) }; }
+    if (c === 'vip') { if (!G.boysUnlocked) return { label: 'Private residence (Boys Club members only)', fn: () => G.ui.notify('Locked. Enter the Boys Club password from the pause menu.', '#c9a227') }; return { label: 'Enter ' + G.BOYS[+p.n].name + "'s " + (G.BOYS[+p.n].villa ? 'villa' : G.BOYS[+p.n].army ? 'bungalow' : 'duplex'), fn: () => G.game.enterInterior(p) }; }
     if (c === 'property' && !G.state.owned[p.id]) { const price = 250000 + (G.hash(p.id) % 8) * 120000; return { label: 'Buy ' + p.n + ' for ' + G.taka(price), fn: () => { if (pl.money < price) return G.ui.notify('You need ' + G.taka(price) + ' in cash. Withdraw from a bank.', '#e74c3c'); pl.money -= price; G.state.owned[p.id] = 1; G.audio.mission(true); G.ui.notify('Property purchased! New safehouse unlocked.', '#3fae5a'); G.props.refreshSigns(); } }; }
     const nm = c === 'house' ? (p.n || 'Residence') : p.n;
     return { label: 'Enter ' + nm, fn: () => G.game.enterInterior(p) };
   }
   pl.findInteract = function () {
     let E = null, F = null; const px = pl.pos.x, pz = pl.pos.z;
-    if (pl.mode === 'interior') { let bd = 1e9; for (const s of I.spots) { const d = Math.hypot(s.x - px, s.z - pz); if (d < s.r && d < bd) { bd = d; E = { label: s.label, fn: s.fn }; } } return { E, F }; }
+    if (pl.mode === 'interior') { let bd = 1e9; for (const s of I.spots) { if (Math.abs((s.y || 0) - pl.pos.y) > 1.3) continue; const d = Math.hypot(s.x - px, s.z - pz); if (d < s.r && d < bd) { bd = d; E = { label: s.label, fn: s.fn }; } } return { E, F }; }
     if (pl.mode === 'vehicle') { const v = pl.vehicle; F = { label: null }; if (Math.abs(v.speed) < 3) for (const p of G.props.near) { if ((p.c === 'garage' || p.c === 'fuel') && p.rx !== null && Math.hypot(p.rx - px, p.rz - pz) < 11) { E = { label: p.n + ': repair and respray', fn: () => G.ui.openMenu(SERVICE(p)) }; break; } } return { E, F }; }
     if (pl.mode !== 'foot') return { E, F };
     // vehicles
     let bv = null, bd = 3.0; for (const v of V.list) { if (v.dead || Math.abs(v.y - pl.pos.y) > 2) continue; const rx = px - v.x, rz = pz - v.z; if (Math.abs(rx) > 9 || Math.abs(rz) > 9) continue; const lx = Math.abs(rx * v.fz - rz * v.fx) - v.def.W / 2, lz = Math.abs(rx * v.fx + rz * v.fz) - v.def.L / 2, d = Math.hypot(Math.max(0, lx), Math.max(0, lz)); if (d < bd) { bd = d; bv = v; } }
-    if (bv && bd < 1.7) { F = { label: (bv.ai && bv.ai.driver ? 'Steal ' : 'Enter ') + bv.def.name, fn: () => pl.enterVehicle(bv) };
+    if (bv && bd < 1.9 && bv.remote) { const nm = bv.owner ? bv.owner.name : 'friend'; if (bv.geo.seats.length > 1) E = { label: 'Ride with ' + nm, fn: () => { pl.boardRide(bv, false); pl.mode = 'mpride'; pl.rideSeat = 1 + (G.hash(G.cloud.uid.length * 31 + G.cloud.uid.charCodeAt(3)) % (bv.geo.seats.length - 1)); const st = bv.geo.seats[pl.rideSeat]; pl.ch.root.position.set(st[0], st[1], st[2]); G.ui.notify('Riding with ' + nm + '. Press F to get out.'); } }; }
+    else if (bv && bd < 1.7) { F = { label: (bv.ai && bv.ai.driver ? 'Steal ' : 'Enter ') + bv.def.name, fn: () => pl.enterVehicle(bv) };
       if (bv.ai && bv.ai.bus && bv.ai.bus.dwell > 0) { const B = bv.ai.bus, nxt = B.stops[(B.si + 1) % B.stops.length]; E = { label: 'Board ' + bv.routeName + ' bus (৳20), next stop ' + (nxt ? nxt.n : ''), fn: () => { if (pl.money < 20) return G.ui.notify('Bus fare is ৳20'); pl.money -= 20; pl.boardRide(bv, true); G.ui.notify('Press E to get off at the next stop. Hold Space to fast forward.'); } }; }
       else if (bv.ai && bv.ai.driver && !bv.ai.chase && !bv.ai.hired && (bv.id === 'cng' || bv.id === 'taxi' || bv.id === 'rickshaw') && Math.abs(bv.speed) < 4) { const wp = G.ui.waypoint; if (!wp) E = { label: 'Hire ' + bv.def.name + ' (set a waypoint on the map first, press M)', fn: () => G.ui.notify('Open the map with M and click a destination') }; else { const dist = Math.hypot(wp.x - px, wp.z - pz), fare = Math.round((bv.id === 'rickshaw' ? 20 : 40) + dist * (bv.id === 'taxi' ? 0.09 : bv.id === 'rickshaw' ? 0.05 : 0.06)); if (bv.id === 'rickshaw' && dist > 1500) E = { label: 'Rickshaw: too far, mama jabe na', fn: () => G.ui.subtitle('Oto dure jabo na mama!') }; else E = { label: `Hire ${bv.def.name} to waypoint (${G.taka(fare)})`, fn: () => { if (pl.money < fare) return G.ui.notify('Not enough cash for the fare'); if (!G.traffic.hire(bv, wp.x, wp.z)) return G.ui.subtitle('Oi dike jabo na bhai.'); pl.fare = fare; pl.boardRide(bv, false); G.ui.subtitle(bv.id === 'rickshaw' ? 'Uthun mama, cholen.' : 'Bosen bhai, jacchi.'); G.ui.notify('Hold Space to fast forward. Press F to get off early.'); } }; } } }
+    if (!E && G.worldSpots) for (const sp of G.worldSpots) if (Math.hypot(sp.x - px, sp.z - pz) < sp.r) { E = { label: sp.label, fn: sp.fn }; break; }
     if (!E) for (const p of G.props.near) { if (p.c === 'gate') continue; if (p.c === 'bus') { if (Math.hypot(p.sx - px, p.sz - pz) < 3.2) { E = { label: p.n + ' bus stop: wait for a bus', fn: () => { if (!p.routes) return G.ui.notify('No bus line serves this stop'); const b = G.traffic.callBus(p); G.ui.notify(b ? G.traffic.routes[p.routes[0]].name + ' bus is on its way. Board with E when it stops.' : 'No bus right now, try again shortly'); } }; break; } continue; }
       const dx = p.x + Math.sin(p.a) * 0.9 - px, dz = p.z + Math.cos(p.a) * 0.9 - pz; if (dx * dx + dz * dz < 2.9) { E = doorAction(p); break; } }
     return { E, F };
@@ -84,10 +88,10 @@
     if (pl.moving) { pl.mdx = mx / ml; pl.mdz = mz / ml; }
     const face = (pl.aiming || pl.firedT > 0) ? cy : pl.moving ? Math.atan2(pl.mdx, pl.mdz) : pl.heading; pl.heading = G.angLerp(pl.heading, face, 1 - Math.exp(-(pl.aiming ? 20 : 11) * dt));
     if (pl.speed > 0.05) { pl.pos.x += pl.mdx * pl.speed * dt; pl.pos.z += pl.mdz * pl.speed * dt; }
-    const ground = interior ? 0 : W.groundY(pl.pos.x, pl.pos.z, pl.pos.y);
+    const ground = interior ? I.groundY(pl.pos.x, pl.pos.z, pl.pos.y) : W.groundY(pl.pos.x, pl.pos.z, pl.pos.y);
     if (pl.grounded && In.hit.Space && !interior && !block) { pl.vy = 5.3; pl.grounded = false; }
     pl.vy -= 16 * dt; pl.pos.y += pl.vy * dt; if (pl.pos.y <= ground) { if (pl.vy < -11.5) pl.damage((-pl.vy - 11) * 7, null); pl.pos.y = ground; pl.vy = 0; pl.grounded = true; } else if (pl.pos.y > ground + 0.08) pl.grounded = false;
-    P.x = pl.pos.x; P.z = pl.pos.z; if (interior) I.collide(P, 0.3); else { W.collide(P, 0.32, pl.pos.y); const b = W.bounds; if (P.x < b.minX + 3 || P.x > b.maxX - 3 || P.z < b.minZ + 3 || P.z > b.maxZ - 3) { P.x = G.clamp(P.x, b.minX + 3, b.maxX - 3); P.z = G.clamp(P.z, b.minZ + 3, b.maxZ - 3); G.ui.prompt('Edge of the map. Turn back towards Dhaka Cantonment.'); } }
+    P.x = pl.pos.x; P.z = pl.pos.z; if (interior) I.collide(P, 0.3, pl.pos.y); else { W.collide(P, 0.32, pl.pos.y); const b = W.bounds; if (P.x < b.minX + 3 || P.x > b.maxX - 3 || P.z < b.minZ + 3 || P.z > b.maxZ - 3) { P.x = G.clamp(P.x, b.minX + 3, b.maxX - 3); P.z = G.clamp(P.z, b.minZ + 3, b.maxZ - 3); G.ui.prompt('Edge of the map. Turn back towards Dhaka Cantonment.'); } }
     pl.pos.x = P.x; pl.pos.z = P.z; if (!interior) vehiclePush();
     // melee
     if (pl.punchT > 0) { pl.punchT -= dt; if (!pl.punchHit && pl.punchT < 0.24) { pl.punchHit = true; const hx = Math.sin(pl.heading), hz = Math.cos(pl.heading); let best = null, bd = def.id === 'bat' ? 2.1 : 1.6; if (!interior) for (const p of N.list) { if (p.dead) continue; const dx = p.x - pl.pos.x, dz = p.z - pl.pos.z, d = Math.hypot(dx, dz); if (d < bd && (dx * hx + dz * hz) / (d || 1) > 0.35) { bd = d; best = p; } } if (best) { best.hit(def.dmg, 'body', hx, hz, 'player'); if (best.hp < 45 || def.id === 'bat') best.knock(hx * 3.5, hz * 3.5, 0, 'player'); G.audio.thud(); G.fx.shake = 0.15; } else if (!interior) for (const v of V.list) { const dx = v.x - pl.pos.x, dz = v.z - pl.pos.z; if (Math.hypot(dx, dz) < v.R + 0.8) { v.damage(def.dmg * 0.4); G.audio.crash(0.25, 0); break; } } } }
@@ -102,12 +106,12 @@
     const v = pl.vehicle, In = G.input, block = G.ui.blocking, c = pl.ctl;
     c.throttle = block ? 0 : (In.keys.KeyW || In.keys.ArrowUp ? 1 : 0) - (In.keys.KeyS || In.keys.ArrowDown ? 1 : 0); c.steer = block ? 0 : (In.keys.KeyA || In.keys.ArrowLeft ? 1 : 0) - (In.keys.KeyD || In.keys.ArrowRight ? 1 : 0); c.handbrake = !block && !!In.keys.Space;
     v.near = 0; v.update(dt, c); pl.pos.x = v.x; pl.pos.y = v.y; pl.pos.z = v.z; pl.heading = v.h; pl.speed = Math.abs(v.speed);
-    if (!block) { if (In.hit.KeyL) v.setLights(!v.lights); if (In.hit.KeyH) { G.audio.horn(0, v.def.kind === 'bus' || v.def.kind === 'truck' ? 'bus' : v.id === 'rickshaw' ? 'rickshaw' : v.id === 'cng' ? 'cng' : 'player'); N.alarmHorn && N.alarmHorn(); } if (In.hit.KeyQ && v.mBarA) v.siren = !v.siren; }
+    if (!block) { if (In.hit.KeyL) v.setLights(!v.lights); if (In.hit.KeyH) { G.audio.horn(0, v.def.kind === 'bus' || v.def.kind === 'truck' ? 'bus' : v.id === 'rickshaw' ? 'rickshaw' : v.id === 'cng' ? 'cng' : 'player'); if (G.net.active) G.net.send('hn', v.def.kind === 'bus' || v.def.kind === 'truck' ? 'bus' : v.id === 'rickshaw' ? 'rickshaw' : v.id === 'cng' ? 'cng' : 'car'); } if (In.hit.KeyQ && v.mBarA) v.siren = !v.siren; }
     const def = Wp.DEFS[pl.weapon]; pl.aiming = false;
     if (!block && In.locked && (def.type === 'pistol' || def.type === 'smg') && v.def.kind !== 'bus') Wp.playerUpdate(dt, pl, true); else { pl.cool -= dt; pl.firedT = 0; }
     pl.ch.update(dt, { pose: v.geo.pose || 'drive', steer: v.steer / 0.6, speed: Math.abs(v.speed) });
     if (v.slip > 3.5 && pl.speed > 5 && v.y <= v.gy + 0.05) { if (Math.random() < dt * 30) G.fx.tyre(v.x - v.fx * v.def.wb * 0.5, v.y + 0.1, v.z - v.fz * v.def.wb * 0.5); }
-    if (v.inWater && (pl.wetMsg || 0) < G.time) { pl.wetMsg = G.time + 6; G.ui.notify('The engine is flooding! Get out of the water.'); v.damage(40, true); }
+    if (v.inWater && v.def.kind !== 'boat' && (pl.wetMsg || 0) < G.time) { pl.wetMsg = G.time + 6; G.ui.notify('The engine is flooding! Get out of the water.'); v.damage(40, true); }
   }
   function rideUpdate(dt) {
     const v = pl.ride, In = G.input; if (!v || v.removed || v.dead || !v.ai) { if (v && !v.removed) pl.leaveRide(); else { pl.mode = 'foot'; pl.ride = null; G.scene.add(pl.ch.root); pl.ch.root.visible = true; G.timeMul = 1; } return; }
@@ -119,7 +123,7 @@
   pl.update = function (dt) {
     if (pl.hurtT > 0) pl.hurtT = Math.max(0, pl.hurtT - dt * 0.6);
     if (pl.dead) { pl.ch.update(dt, { pose: 'dead' }); return; }
-    if (pl.mode === 'foot') footUpdate(dt, false); else if (pl.mode === 'interior') footUpdate(dt, true); else if (pl.mode === 'vehicle') vehicleUpdate(dt); else rideUpdate(dt);
+    if (pl.mode === 'foot') footUpdate(dt, false); else if (pl.mode === 'interior') footUpdate(dt, true); else if (pl.mode === 'vehicle') vehicleUpdate(dt); else if (pl.mode === 'mpride') { const v = pl.ride; if (!v || v.removed || !v.remote) { if (v && !v.removed) pl.leaveRide(); else { pl.mode = 'foot'; pl.ride = null; G.scene.add(pl.ch.root); pl.ch.root.visible = true; pl.selectWeapon(pl.weapon, true); } } else { pl.pos.x = v.x; pl.pos.y = v.y; pl.pos.z = v.z; pl.heading = v.h; pl.speed = Math.abs(v.speed); pl.ch.update(dt, { pose: 'sit' }); G.ui.prompt('Riding with ' + (v.owner ? v.owner.name : 'friend') + '   [F] get out'); if (G.input.hit.KeyF && !G.ui.blocking) pl.leaveRide(); } } else rideUpdate(dt);
     // interaction prompts
     pl.intT = (pl.intT || 0) - dt; if (pl.intT <= 0) { pl.intT = 0.1; pl.int = pl.findInteract(); }
     const it = pl.int, In = G.input; if (!it || G.ui.blocking) return;

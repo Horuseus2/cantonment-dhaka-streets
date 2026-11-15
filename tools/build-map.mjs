@@ -354,8 +354,34 @@ special('property', 'Banani Road 11 Penthouse', 23.7905, 90.4065, civ);
   buildings.forEach((b, bi) => { if (hasDoor.has(bi) || b.area < 120 || b.area > 480 || !inCantt(b.cx, b.cz) || b.s === 2 || b.s === 6) return; const nr = nearestRoad(b.cx, b.cz, 38, 7); if (!nr) return; cand.push([Math.hypot(b.cx - cxm, b.cz - czm), bi]); });
   cand.sort((a, b) => a[0] - b[0]); const chosen = [];
   for (const [d, bi] of cand) { const b = buildings[bi]; if (chosen.some(c => Math.hypot(buildings[c].cx - b.cx, buildings[c].cz - b.cz) < 70)) continue; chosen.push(bi); if (chosen.length === 15) break; }
-  chosen.forEach((bi, i) => { const b = buildings[bi]; hasDoor.add(bi); b.f = ARMY.has(i) ? 1 : 2; b.s = 3; const before = pois.length; addPoi('vip', String(i), b.cx, b.cz); if (pois.length === before) console.log('vip house failed', i); });
+  // Irtiza (4, navy officer): a house on a lake shore with a dock for his patrol boat
+  const lakes = areas.filter(a => a.t === 'water' && a.a > 14000);
+  let lakeBest = null;
+  buildings.forEach((b, bi) => {
+    if (hasDoor.has(bi) || chosen.includes(bi) || b.area < 110 || b.area > 520 || b.s === 2 || b.s === 6) return; if (!nearestRoad(b.cx, b.cz, 45, 7)) return;
+    for (const L of lakes) { let bd = 1e9, sx = 0, sz = 0; const r = L.ring; for (let i = 0; i < r.length; i++) { const a = r[i], c = r[(i + 1) % r.length], q = segClosest(b.cx, b.cz, a[0], a[1], c[0], c[1]); if (q[2] < bd) { bd = q[2]; sx = q[0]; sz = q[1]; } }
+      if (bd > 34 || bd < 6 || pip(b.cx, b.cz, r)) continue; const dx = (sx - b.cx) / bd, dz = (sz - b.cz) / bd; let ok = true; for (const k of [4, 9, 16, 26]) if (!pip(sx + dx * k, sz + dz * k, r)) ok = false; if (!ok) continue;
+      // nothing built between the house and the water
+      let clear = true; for (let k = Math.sqrt(b.area) * 0.75; k < bd + 10; k += 2) { const bi2 = buildingAt(b.cx + dx * k, b.cz + dz * k, 0.01); if (bi2 >= 0 && bi2 !== bi && pip(b.cx + dx * k, b.cz + dz * k, buildings[bi2].ring)) clear = false; } if (!clear) continue;
+      const score = Math.hypot(b.cx - cxm, b.cz - czm) + (inCantt(b.cx, b.cz) ? 0 : 500) - Math.min(L.a, 120000) / 30; if (!lakeBest || score < lakeBest.score) lakeBest = { score, bi, sx, sz, dx, dz, lake: L }; }
+  });
+  let dock = null;
+  if (lakeBest) { chosen[4] = lakeBest.bi; dock = { sx: lakeBest.sx, sz: lakeBest.sz, dx: lakeBest.dx, dz: lakeBest.dz }; console.log('lake house for Irtiza: lake area', Math.round(lakeBest.lake.a), lakeBest.lake.n, 'shore dist', Math.round(Math.hypot(lakeBest.sx - buildings[lakeBest.bi].cx, lakeBest.sz - buildings[lakeBest.bi].cz))); } else console.log('NO LAKE HOUSE FOUND');
+  // Sifar (14): an empty plot beside a road for a walled villa compound
+  const VW = 64, VD = 58; let villa = null; const noGo = areas.filter(a => ['pitch', 'golf', 'park', 'cemetery', 'water', 'paved', 'wetland', 'sand'].includes(a.t));
+  const freeAt = (x, z) => { if (!inCantt(x, z)) return false; for (const bi of bGrid.q(x, z, 3)) { const b = buildings[bi]; if (pip(x, z, b.ring)) return false; for (let i = 0; i < b.ring.length; i++) { const a = b.ring[i], c = b.ring[(i + 1) % b.ring.length]; if (segClosest(x, z, a[0], a[1], c[0], c[1])[2] < 3) return false; } } const nr = nearestRoad(x, z, 14, 10); if (nr && nr.d < roads[nr.ri].w / 2 + 3) return false; for (const a of noGo) if (pip(x, z, a.ring)) return false; for (const a of aero) for (let i = 0; i + 1 < a.p.length; i++) if (segClosest(x, z, a.p[i][0], a.p[i][1], a.p[i + 1][0], a.p[i + 1][1])[2] < a.w / 2 + 6) return false; return true; };
+  roads.forEach((r, ri) => {
+    if (r.t < 3 || r.t > 5 || r.L > 0 || r.w < 5) return;
+    for (let i = 0; i + 1 < r.k.length; i++) { const A = nodes[r.k[i]], B = nodes[r.k[i + 1]]; let dx = B[0] - A[0], dz = B[1] - A[1]; const l = Math.hypot(dx, dz); if (l < 18) continue; dx /= l; dz /= l; const mxr = (A[0] + B[0]) / 2, mzr = (A[1] + B[1]) / 2;
+      for (const sd of [1, -1]) { const nx = dz * sd, nz = -dx * sd, off = r.w / 2 + 6 + VD / 2, cx = mxr + nx * off, cz = mzr + nz * off; const dist = Math.hypot(cx - cxm, cz - czm); if (villa && dist >= villa.dist) continue;
+        let ok = true; for (let u = -VW / 2 - 3; u <= VW / 2 + 3 && ok; u += 4) for (let v = -VD / 2 - 3; v <= VD / 2 + 3; v += 4) { if (!freeAt(cx + dx * u - nx * v, cz + dz * u - nz * v)) { ok = false; break; } } if (!ok) continue;
+        // the verge between the plot and the road must also be clear of buildings
+        villa = { dist, x: cx, z: cz, nx: -nx, nz: -nz, w: VW, d: VD, rw: r.w, road: r.n }; } }
+  });
+  if (villa) console.log('villa plot', Math.round(villa.x), Math.round(villa.z), 'dist from centre', Math.round(villa.dist), 'road', villa.road); else console.log('NO VILLA PLOT FOUND');
+  chosen.forEach((bi, i) => { if (i === 14 && villa) return; const b = buildings[bi]; hasDoor.add(bi); b.f = ARMY.has(i) ? 1 : 2; b.s = 3; const before = pois.length; addPoi('vip', String(i), b.cx, b.cz); if (pois.length === before) console.log('vip house failed', i); });
   console.log('vip houses', chosen.length);
+  globalThis.SPECIAL = { dock: dock ? [r1(dock.sx), r1(dock.sz), Math.round(Math.atan2(dock.dx, dock.dz) * 1000)] : null, villa: villa ? { x: r1(villa.x), z: r1(villa.z), a: Math.round(Math.atan2(villa.nx, villa.nz) * 1000), w: villa.w, d: villa.d, rw: villa.rw } : null };
 }
 // random enterable residences
 let houseCount = 0;
@@ -396,7 +422,7 @@ const out = {
   rails: rails.map(enc), aero: aero.map(a => [a.t, a.w, enc(a.p)]), helipads, aircraft,
   pois: pois.map(p => { const o = [p.c, p.n, r1(p.x), r1(p.z), Math.round(Math.atan2(p.nx, p.nz) * 100), p.b, p.kiosk ? 1 : 0]; if (p.rx !== undefined) o.push(p.rx, p.rz); return o; }),
   stops: stopOut.map(s => [s.n, r1(s.x), r1(s.z), r1(s.rx), r1(s.rz)]),
-  signals, places, checkpoints: cpOut
+  signals, places, checkpoints: cpOut, special: globalThis.SPECIAL
 };
 fs.mkdirSync(new URL('../data/', import.meta.url), { recursive: true });
 const js = 'window.MAPDATA=' + JSON.stringify(out) + ';';

@@ -10,6 +10,8 @@ await page.click('#bpw'); await page.keyboard.type('wrongpass'); await page.clic
 await page.$eval('#bpw', e => { e.value = ''; }); await page.click('#bpw'); await page.keyboard.type('Boysarecool69'); await page.keyboard.press('Enter'); await wait(500);
 console.log('unlocked:', await page.evaluate(() => G.boysUnlocked), '| roster cards:', await page.$$eval('.boy', a => a.length), '| first card:', await top('.boy'));
 await page.screenshot({ path: path.join(out, 'boys_from_menu.png') });
-await page.click('.boy[data-i="14"]'); await wait(3000); console.log('playing as:', await page.evaluate(() => [G.state.name, G.running, G.player.mode]));
+await page.click('.boy[data-i="14"]'); await page.waitForSelector('#f1', { timeout: 15000 }); console.log('account form:', await top('#f1'), '| mode:', (await page.$('#f2')) ? 'create password' : 'sign in');
+if (await page.$('#f2')) { await page.click('#f1'); await page.keyboard.type('testpass1'); await page.click('#f2'); await page.keyboard.type('testpass1'); await page.click('#fa'); await page.keyboard.type('dhaka'); } else { await page.click('#f1'); await page.keyboard.type('testpass1'); }
+await page.click('#fg'); await wait(6000); console.log('playing as:', await page.evaluate(() => [G.state.name, G.running, G.player.mode]));
 await page.evaluate(() => G.game.toMenu()); await wait(600); await page.click('#mSettings'); await wait(400); console.log('settings dialog:', await top('#pause button[data-act="resume"]'));
 await page.screenshot({ path: path.join(out, 'settings_from_menu.png') }); await browser.close();

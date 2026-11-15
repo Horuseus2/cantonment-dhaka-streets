@@ -38,6 +38,9 @@
   A.step = (wet, run) => { noise(0.06, 'lowpass', wet ? 1800 : 600 + Math.random() * 300, run ? 0.11 : 0.06, 0, 0.8); if (wet) noise(0.09, 'highpass', 3000, 0.03, 0.01); };
   A.door = () => { noise(0.12, 'lowpass', 500, 0.3); tone(140, 0.12, 'sine', 0.25, 0.02, 70); };
   A.cardoor = () => { noise(0.07, 'lowpass', 900, 0.35); tone(90, 0.1, 'sine', 0.3, 0, 50); };
+  A.meow = () => { tone(760, 0.16, 'triangle', 0.1, 0, 560); tone(540, 0.26, 'triangle', 0.09, 0.14, 700); };
+  A.purr = () => { for (let i = 0; i < 14; i++) tone(52 + (i % 2) * 6, 0.05, 'sawtooth', 0.07, i * 0.06); };
+  A.gate = () => { noise(1.6, 'lowpass', 220, 0.16, 0, 0.6); tone(64, 1.5, 'sawtooth', 0.035, 0, 58); noise(0.08, 'bandpass', 1800, 0.12, 1.5, 3); };
   A.splash = () => noise(0.5, 'bandpass', 1400, 0.3, 0, 0.6, 500);
   A.mission = ok => { if (ok) [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, 'triangle', 0.16, i * 0.12)); else [392, 330, 262].forEach((f, i) => tone(f, 0.4, 'triangle', 0.16, i * 0.18)); };
   A.wasted = () => { tone(196, 1.6, 'sawtooth', 0.14, 0, 70); tone(147, 1.8, 'sine', 0.2, 0.1, 55); };

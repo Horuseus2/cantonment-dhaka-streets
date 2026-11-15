@@ -138,6 +138,7 @@
       const pose = st.pose;
       if (pose === 'dead') { T.rx = -1.52; T.sLx = -0.4; T.sRx = -0.6; T.sLy = 0.8; T.sRy = -0.9; T.hL = 0.2; T.kL = 0.3; T.by = 0.02; k = 6; }
       else if (pose === 'drive' || pose === 'sit') { T.hL = T.hR = 1.38; T.kL = T.kR = 1.3; if (pose === 'drive') { const s = (st.steer || 0) * 0.35; T.sLx = 1.05 + s; T.sRx = 1.05 - s; T.sLy = -0.22; T.sRy = 0.22; T.eL = T.eR = 0.4; } else { T.sLx = T.sRx = 0.35; T.eL = T.eR = 0.9; } }
+      else if (pose === 'helm') { const st2 = (st.steer || 0) * 0.3; T.sLx = 0.95 + st2; T.sRx = 0.95 - st2; T.sLy = -0.2; T.sRy = 0.2; T.eL = T.eR = 0.35; T.kL = T.kR = 0.08; }
       else if (pose === 'bike') { T.hL = T.hR = 1.05; T.kL = T.kR = 1.25; T.hz = 0.3; T.sLx = T.sRx = 1.15; T.sLy = -0.1; T.sRy = 0.1; T.eL = T.eR = 0.25; T.sp = 0.3; T.hdX = -0.25; }
       else if (pose === 'pedal') { this.ph += dt * (2 + sp * 1.4); const p = this.ph; T.hL = 1.0 + Math.sin(p) * 0.35; T.hR = 1.0 - Math.sin(p) * 0.35; T.kL = 1.2 + Math.cos(p) * 0.35; T.kR = 1.2 - Math.cos(p) * 0.35; T.hz = 0.2; T.sLx = T.sRx = 1.1; T.eL = T.eR = 0.3; T.sp = 0.3; T.hdX = -0.2; k = 30; }
       else if (pose === 'handsup') { T.sLx = T.sRx = 2.75; T.sLy = 0.3; T.sRy = -0.3; T.eL = T.eR = 0.5; }
@@ -172,6 +173,7 @@
     if (kind === 'soldier') { a.top = 'army'; a.hat = r() < 0.6 ? 'beret' : 'cap'; a.hatCol = '#3a4a26'; a.beard = 0; a.hair = 7; a.fat = 0; a.height = 1 + r() * 0.06; a.glasses = 0; }
     else if (kind === 'mp') { a.top = 'army'; a.hat = 'beret'; a.hatCol = '#8f1d1d'; a.beard = 0; a.hair = 7; a.fat = 0; a.height = 1.02; a.glasses = r() < 0.3 ? 2 : 0; }
     else if (kind === 'police') { a.top = 'police'; a.hat = 'peaked'; a.beard = pk([0, 3]); a.fat = r() < 0.3 ? 0.3 : 0; }
+    else if (kind === 'sec') { a.top = 'rab'; a.hat = 'cap'; a.hatCol = '#101214'; a.glasses = r() < 0.7 ? 2 : 0; a.fat = 0; a.beard = pk([0, 0, 1]); a.hair = 7; a.height = 1.02 + r() * 0.05; a.build = 1.05; }
     else if (kind === 'rab') { a.top = 'rab'; a.hat = 'beanie'; a.hatCol = '#101214'; a.glasses = 2; a.fat = 0; a.beard = 0; }
     else if (kind === 'female' || (kind === 'civ' && r() < 0.3)) { a.sex = 'f'; a.beard = 0; a.fat = r() < 0.15 ? 0.25 : 0; a.height = 0.88 + r() * 0.08; a.hair = pk([4, 5, 4]); const t = r(); if (t < 0.45) { a.top = 'kameez'; a.topCol = pk(SARI); a.botCol = pk(['#f2f2f2', '#f1c40f', '#1a1a1a', '#e8d5b0']); if (r() < 0.4) { a.hat = 'hijab'; a.hatCol = pk(['#2c3e50', '#6d4c41', '#e8d5b0', '#8e44ad', '#1a1a1a']); } } else if (t < 0.7) { a.top = 'sari'; a.topCol = pk(SARI); a.botCol = pk(SARI); } else if (t < 0.88) { a.top = 'burqa'; } else { a.top = 'shirt'; a.hat = r() < 0.5 ? 'hijab' : 'none'; a.hatCol = pk(SHIRT); } }
     else if (kind === 'worker') { a.top = pk(['vest', 'tshirt', 'shirt']); a.bottom = 'lungi'; a.botCol = pk(LUNGI); a.topCol = pk(['#f2f2f2', '#bdc3c7', '#e8d5b0', '#7f8c8d']); a.shoes = '#6d4c41'; a.hat = r() < 0.2 ? 'tupi' : 'none'; a.fat = 0; a.build = 0.92; }

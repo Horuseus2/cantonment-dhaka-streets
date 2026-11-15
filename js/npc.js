@@ -18,10 +18,10 @@
 
   class Ped {
     constructor(x, z, kind, app, opt) {
-      opt = opt || {}; this.kind = kind; this.x = x; this.z = z; this.y = opt.y || 0; this.heading = Math.random() * 6.28; this.hp = kind === 'civ' || kind === 'female' || kind === 'worker' ? 100 : kind === 'rab' ? 220 : 150;
+      opt = opt || {}; this.kind = kind; this.x = x; this.z = z; this.y = opt.y || 0; this.heading = Math.random() * 6.28; this.hp = kind === 'civ' || kind === 'female' || kind === 'worker' ? 100 : kind === 'rab' || kind === 'sec' ? 220 : 150;
       this.ch = new G.Char.Character(app || G.Char.randomApp(kind)); this.scale = this.ch.h; this.state = opt.state || 'walk'; this.speed = 0; this.walk = 1.15 + Math.random() * 0.5; this.side = Math.random() < 0.5 ? 1 : -1; this.t = Math.random() * 5; this.dead = false; this.down = 0; this.kx = 0; this.kz = 0; this.near = 99; this.seeT = Math.random(); this.see = false; this.shootT = 1; this.burst = 0;
       this.cop = kind === 'police' || kind === 'soldier' || kind === 'mp' || kind === 'rab'; this.hostile = !!opt.hostile; this.money = 40 + Math.floor(Math.random() * 500);
-      const wid = opt.weapon || (kind === 'police' ? 'pistol' : kind === 'soldier' || kind === 'mp' ? 'carbine' : kind === 'rab' ? 'smg' : null);
+      const wid = opt.weapon || (kind === 'police' ? 'pistol' : kind === 'soldier' || kind === 'mp' || kind === 'sec' ? 'carbine' : kind === 'rab' ? 'smg' : null); if (opt.fy !== undefined) { this.fy = opt.fy; this.y = opt.fy; }
       if (wid) { this.weapon = Wp.DEFS[wid]; this.ch.setGun(Wp.mesh(wid), this.weapon.long); }
       (opt.scene || G.scene).add(this.ch.root); this.sync(); N.list.push(this);
     }
@@ -29,7 +29,7 @@
     setPath(prev, next) { this.prev = prev; this.next = next; this.rd = W.roads[roadOf(prev, next)] || null; }
     hit(dmg, part, dx, dz, src) {
       if (this.dead) return; this.hp -= dmg; N.alarm(this.x, this.z, 40, src);
-      if (src === 'player') { Wt.crime(this.cop ? 'cop' : 'assault', this.x, this.z); if (this.cop || this.kind === 'thug') this.hostile = true; }
+      if (src === 'player') { Wt.crime(this.cop ? 'cop' : 'assault', this.x, this.z); if (this.cop || this.kind === 'thug' || this.kind === 'sec') this.hostile = true; }
       if (this.hp <= 0) this.die(src, dx, dz); else if (!this.cop && !this.hostile) { this.state = 'flee'; this.t = 9; N.say('hit', this); }
     }
     knock(vx, vz, dmg, src) { if (this.dead) return; this.hp -= dmg; this.down = 2.2 + Math.random(); this.kx = vx; this.kz = vz; if (src === 'player') Wt.crime(this.cop ? 'cop' : 'hitrun', this.x, this.z); if (this.hp <= 0) this.die(src, vx, vz); if (G.audio && this.near < 40) G.audio.thud(); }
@@ -56,17 +56,18 @@
         else { const A = this.prev, B = this.next, dx = W.nx[B] - W.nx[A], dz = W.nz[B] - W.nz[A], l = Math.hypot(dx, dz) || 1, o = this.rd ? offFor(this.rd, this.side) : 0; const tx = W.nx[B] + dz / l * o, tz = W.nz[B] - dx / l * o;
           if (this.moveTo(tx, tz, this.walk * (G.env.rain > 0.4 ? 1.5 : 1), dt) < 1.4) { const e = W.adjP[B]; let nxt = -1; if (e) { let tot = 0; const c = []; for (let i = 0; i < e.length; i += 3) { if (e[i] === A) continue; const rd = W.roads[e[i + 2]]; const w = rd.elev && rd.t < 9 ? 0.02 : rd.t <= 2 ? 0.6 : 2; c.push(e[i], w); tot += w; } if (c.length) { let r = Math.random() * tot; for (let i = 0; i < c.length; i += 2) { r -= c[i + 1]; if (r <= 0) { nxt = c[i]; break; } } if (nxt < 0) nxt = c[0]; } else nxt = A; } this.setPath(B, nxt); if (Math.random() < 0.06) { this.state = 'idle'; this.t = 3 + Math.random() * 8; this.phone = Math.random() < 0.5; } } }
         if (G.env.rain > 0.4) run = this.speed > 1.6;
+      } else if (st === 'patrol' && this.route) { const t = this.route[this.ri % this.route.length]; if (this.wait > 0) this.wait -= dt; else if (this.moveTo(t[0], t[1], 1.25, dt) < 0.8) { this.ri++; this.wait = Math.random() < 0.4 ? 2 + Math.random() * 4 : 0; }
       } else if (st === 'idle' || st === 'guard') { if (st === 'idle') { this.t -= dt; if (this.t <= 0) this.state = 'walk'; if (this.phone) pose = 'phone'; } else if (this.gh !== undefined) this.heading = G.angLerp(this.heading, this.near < 12 ? Math.atan2(pl.pos.x - this.x, pl.pos.z - this.z) : this.gh, 1 - Math.exp(-4 * dt)); }
       else if (st === 'flee') { this.t -= dt; const dx = this.x - (this.fx !== undefined ? this.fx : pl.pos.x), dz = this.z - (this.fz !== undefined ? this.fz : pl.pos.z), d = Math.hypot(dx, dz) || 1; this.moveTo(this.x + dx / d * 6 + Math.sin(this.t * 2 + this.walk * 9) * 2, this.z + dz / d * 6 + Math.cos(this.t * 2 + this.walk * 9) * 2, 5.4, dt); run = true; if (this.t <= 0) { this.state = 'walk'; this.fx = undefined; const n = W.nearestRoad(this.x, this.z, 60, 10, 1, tmp); if (n) { const rd = W.roads[n.ri]; this.setPath(rd.k[n.i], rd.k[n.i + 1]); } } }
       else if (st === 'cower' || st === 'handsup') { this.t -= dt; pose = st; if (this.t <= 0) { this.state = 'flee'; this.t = 6; } }
       else if (st === 'sit') pose = 'sit';
       // collisions + ground
       if (this.speed > 0 && this.near < 80) { P.x = this.x; P.z = this.z; if (W.collide(P, 0.3, this.y, st === 'walk')) { this.x = P.x; this.z = P.z; if (st === 'flee') this.t -= dt * 2; } }
-      if (this.near < 90) this.y = W.groundY(this.x, this.z, this.y + 0.2);
+      if (this.near < 90 && this.fy === undefined) this.y = W.groundY(this.x, this.z, this.y + 0.2);
       // run over by vehicles / bumped by player
       if (this.near < 70 && !this.inVeh) { for (const v of G.Veh.list) { if (Math.abs(v.x - this.x) > 7 || Math.abs(v.z - this.z) > 7 || Math.abs(v.y - this.y) > 1.5) continue; const rx = this.x - v.x, rz = this.z - v.z, ah = rx * v.fx + rz * v.fz, sd = rx * v.fz - rz * v.fx, sp = Math.hypot(v.vx, v.vz); if (Math.abs(ah) < v.def.L / 2 + 0.3 && Math.abs(sd) < v.def.W / 2 + 0.3) { if (sp > 2.2) { this.knock(v.vx * 0.8 + (sd > 0 ? v.fz : -v.fz) * 2, v.vz * 0.8 + (sd > 0 ? -v.fx : v.fx) * 2, sp * 7.5, v.driver === 'player' ? 'player' : 'npc'); v.vx *= 0.96; v.vz *= 0.96; } else { const s = sd > 0 ? 1 : -1; this.x += v.fz * s * dt * 3; this.z -= v.fx * s * dt * 3; } } }
         if (pl.mode === 'foot' && this.near < 0.62) { const dx = this.x - pl.pos.x, dz = this.z - pl.pos.z, d = this.near || 0.01; this.x += dx / d * (0.62 - d); this.z += dz / d * (0.62 - d); if (pl.speed > 4.5 && !this.cop) { N.say('bump', this); } } }
-      if (this.near < 85) ch.update(dt, { speed: this.speed, run, aim, pitch: this.aimPitch || 0, armed: this.weapon && (hostile || this.cop) ? (this.weapon.long ? 2 : 1) : 0, pose });
+      if (this.near < 85) ch.update(dt, { speed: this.speed, run, aim, pitch: this.aimPitch || 0, armed: this.weapon && (hostile || this.cop || this.kind === 'sec') ? (this.weapon.long ? 2 : 1) : 0, pose });
       this.sync();
     }
     combat(dt) { // returns running flag

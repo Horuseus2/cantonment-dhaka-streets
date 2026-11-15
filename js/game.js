@@ -11,10 +11,11 @@
     if (pl.dead || !G.running) return false; if (manual && G.wanted.level > 0) { U.notify('You cannot save while wanted', '#e5484d'); return false; } if (Gm.mission) { if (manual) U.notify('Finish or fail the mission first', '#e5484d'); return false; }
     const ip = pl.mode === 'interior' ? Gm.intPos : pl.pos; G.state.app = Object.assign({}, pl.ch.app);
     const d = { state: G.state, p: { x: ip.x, z: ip.z, h: pl.heading, health: pl.health, armor: pl.armor, money: pl.money, bank: pl.bank, inv: pl.inv, weapon: pl.weapon, medkits: pl.medkits }, env: { time: G.env.time, day: G.env.day, weather: G.env.weather } };
+    if (G.state.boy >= 0) { G.boyAuth.putSave(G.state.boy, d, !!manual); return true; }
     try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch (e) { return false; }
   };
   function resetWorld() { for (const v of V.list.slice()) v.remove(); for (const p of N.list.slice()) p.remove(); T.parked = 0; G.wanted.level = 0; G.wanted.kills = 0; Gm.mission = null; Gm.job = null; clearMarker(); U.objective(null); U.setWaypoint(null); if (pl.mode === 'interior') { I.clear(); G.activeScene = G.scene; } pl.mode = 'foot'; pl.vehicle = null; pl.ride = null; pl.dead = false; G.timeMul = 1; U.bigText(null); }
-  function begin(x, z, h) { pl.teleport(x, z, h); G.cam.yaw = h; G.cam.pitch = -0.1; G.running = true; U.showMainMenu(false); U.showHUD(true); U.weaponChanged(); U.lock(); if (G.audio) G.audio.init(); G.preload(x, z); nextMissionMarker(); }
+  function begin(x, z, h) { pl.teleport(x, z, h); G.cam.yaw = h; G.cam.pitch = -0.1; G.running = true; U.showMainMenu(false); U.showHUD(true); U.weaponChanged(); U.lock(); if (G.audio) G.audio.init(); G.preload(x, z); nextMissionMarker(); if (G.net.pendingRoom) { const room = G.net.pendingRoom; G.net.pendingRoom = null; G.net.join(room).then(r => { if (r.ok) { U.notify('Connected to server "' + r.room + '". ' + r.count + ' of ' + G.net.max + ' players online.', '#58d26b'); U.notify('Press T to chat, hold Z for the player list.'); } else U.notify(r.why, '#e5484d'); }); } }
   const doorOut = (p, d) => ({ x: p.x + Math.sin(p.a) * (d || 1.6), z: p.z + Math.cos(p.a) * (d || 1.6), h: p.a });
   Gm.homePoi = () => G.state.boy >= 0 ? G.boys.house(G.state.boy) : W.pois.find(p => p.c === 'home');
   Gm.newGame = function () {
@@ -33,21 +34,25 @@
     Object.assign(pl, { health: p.health, armor: p.armor, money: p.money, bank: p.bank, inv: p.inv, weapon: p.weapon, medkits: p.medkits || 0 }); pl.init(G.state.app || G.Char.defaultApp());
     G.env.time = d.env.time; G.env.day = d.env.day; G.env.setWeather(d.env.weather, true); begin(p.x, p.z, p.h); if (G.state.boy >= 0) G.boys.spawnCars(G.state.boy); U.notify('Welcome back, ' + G.state.name);
   };
-  Gm.playAsBoy = function (i) {
-    const b = G.BOYS[i], h = G.boys.house(i); resetWorld(); G.state = fresh(); G.state.boy = i; G.state.name = b.name; G.state.app = Object.assign({}, b.app); G.state.missions = { m1: 1 };
-    Object.assign(pl, { health: 100, armor: 100, money: 500000, bank: 5000000, inv: { fist: { clip: 0, ammo: 0 } }, weapon: 'fist', medkits: 5 }); pl.init(b.app);
-    if (b.army || /Navy/.test(b.role)) { pl.give('pistol', true); pl.give('carbine', true); } else pl.give('pistol', true);
-    G.env.time = 9; G.env.setWeather('clear', true); const o = doorOut(h, 2); begin(o.x, o.z, o.h); G.boys.spawnCars(i); G.props.refreshSigns();
-    U.bigLabel(b.name); U.notify('Playing as ' + b.name + '. ' + b.role + '.', '#f5c542'); U.notify('Your ' + (b.army ? 'bungalow' : 'duplex') + ' is behind you. The Boys Whip' + (b.cars.length ? ' and your own cars are' : ' is') + ' parked on the road outside.', '#f5c542');
+  Gm.playAsBoy = async function (i) {
+    const b = G.BOYS[i]; let d = null; try { d = await G.boyAuth.loadSave(i); } catch (e) { }
+    const h = G.boys.house(i); resetWorld(); G.state = fresh(); if (d && d.state) G.state = Object.assign(fresh(), d.state); G.state.boy = i; G.state.name = b.name; if (!G.state.app) G.state.app = Object.assign({}, b.app); G.state.missions.m1 = 1;
+    const o = doorOut(h, 2);
+    if (d && d.p) { const p = d.p; Object.assign(pl, { health: Math.max(20, p.health), armor: p.armor, money: p.money, bank: p.bank, inv: p.inv, weapon: p.weapon, medkits: p.medkits || 0 }); pl.init(G.state.app); if (!G.net.pendingRoom && d.env) { G.env.time = d.env.time; G.env.day = d.env.day; G.env.setWeather(d.env.weather, true); } }
+    else { Object.assign(pl, { health: 100, armor: 100, money: 500000, bank: 5000000, inv: { fist: { clip: 0, ammo: 0 } }, weapon: 'fist', medkits: 5 }); pl.init(G.state.app); if (b.army || /Navy/.test(b.role)) { pl.give('pistol', true); pl.give('carbine', true); } else pl.give('pistol', true); G.env.time = 9; G.env.setWeather('clear', true); }
+    begin(o.x, o.z, o.h); G.boys.spawnCars(i); G.props.refreshSigns(); const ht = G.boys.homeType(i);
+    U.bigLabel(b.name); U.notify((d ? 'Welcome back, ' : 'Playing as ') + b.name + '. ' + b.role + '.', '#f5c542');
+    U.notify(b.villa ? 'This is your villa. Four cars and a bike are in the garage, the armory is by the left wall, and Zelda is somewhere in the garden.' : 'Your ' + ht + ' is behind you. The Boys Whip' + (b.cars.length ? ' and your own cars are' : ' is') + ' parked on the road outside.' + (b.boat ? ' Your patrol boat is at the dock on the lake.' : ''), '#f5c542');
+    Gm.save();
   };
-  Gm.toMenu = function () { Gm.save(); G.running = false; U.showHUD(false); U.showMainMenu(true); };
+  Gm.toMenu = function () { Gm.save(true); if (G.net.active) G.net.leave(true); G.running = false; U.showHUD(false); U.showMainMenu(true); };
   Gm.fade = function (fn) { if (Gm.busy) return; Gm.busy = true; U.fade(true); setTimeout(() => { try { fn(); } finally { U.fade(false); setTimeout(() => { Gm.busy = false; }, 250); } }, 480); };
   Gm.enterInterior = function (p) {
     if (Gm.busy) return; if (G.wanted.level >= 3) { U.notify('Not while the whole force is after you!', '#e5484d'); return; }
     Gm.fade(() => { const o = doorOut(p); Gm.intPos.x = o.x; Gm.intPos.z = o.z; Gm.intH = o.h; Gm.intPoi = p; const s = I.build(p); G.activeScene = I.scene; I.scene.add(pl.ch.root); pl.mode = 'interior'; pl.pos.x = s.x; pl.pos.y = 0; pl.pos.z = s.z; pl.heading = s.h; pl.speed = 0; G.cam.yaw = s.h; G.cam.pitch = -0.08; U.bigLabel(p.c === 'vip' ? G.BOYS[+p.n].name : p.n); if (G.audio) G.audio.door(); });
   };
   Gm.exitInterior = function () { if (Gm.busy || pl.mode !== 'interior') return; Gm.fade(() => { I.clear(); G.activeScene = G.scene; G.scene.add(pl.ch.root); pl.mode = 'foot'; pl.teleport(Gm.intPos.x, Gm.intPos.z, Gm.intH); G.cam.yaw = Gm.intH; if (G.audio) G.audio.door(); }); };
-  Gm.sleep = function (hours) { U.closeMenu(); Gm.fade(() => { G.env.time += hours; if (G.env.time >= 24) { G.env.time -= 24; G.env.day++; } pl.health = pl.maxHealth; G.env.envT = 99; const ok = Gm.save(); U.notify(ok ? 'You slept ' + hours + ' hours. Game saved.' : 'You slept ' + hours + ' hours.', '#58d26b'); }); };
+  Gm.sleep = function (hours) { U.closeMenu(); Gm.fade(() => { if (!G.net.active) { G.env.time += hours; if (G.env.time >= 24) { G.env.time -= 24; G.env.day++; } } pl.health = pl.maxHealth; G.env.envT = 99; const ok = Gm.save(); U.notify(ok ? 'You slept ' + hours + ' hours. Game saved.' : 'You slept ' + hours + ' hours.', '#58d26b'); }); };
   Gm.deliver = function (id, color, poi, gi, boy) {
     const key = boy !== undefined ? 'b' + id : gi >= 0 ? 'g' + gi : 'x' + id; for (const v of V.list.slice()) if (v.ownKey === key && v.driver !== 'player') v.remove();
     const x = poi.rx != null ? poi.rx : poi.x, z = poi.rz != null ? poi.rz : poi.z; let v = null; for (let k = 0; k < 6 && !v; k++) { const ox = (k % 3 - 1) * 7, oz = (k > 2 ? 7 : 0); if (T.clearSpot(x + ox, z + oz, 3)) v = T.spawnOnRoad(x + ox, z + oz, id, { parked: true, color: color || undefined }); }
@@ -59,17 +64,18 @@
   Gm.nearestPoi = nearestPoi;
   function respawn(cat, title, colr, sub, fn) {
     if (pl.dead) return; pl.dead = true; pl.aiming = false; if (pl.mode === 'vehicle') { const v = pl.vehicle; pl.exitVehicle(false); pl.pos.x = v.x; pl.pos.z = v.z; } else if (pl.mode === 'bus' || pl.mode === 'ride') pl.leaveRide(); else if (pl.mode === 'interior') { I.clear(); G.activeScene = G.scene; G.scene.add(pl.ch.root); pl.mode = 'foot'; pl.teleport(Gm.intPos.x, Gm.intPos.z); }
-    pl.ch.root.position.set(pl.pos.x, pl.pos.y, pl.pos.z); U.closeMenu(); U.bigText(title, sub, colr); G.timeMul = 0.35; if (G.audio) G.audio.wasted(); failMission(title === 'WASTED' ? 'You died' : 'You were arrested'); endJob();
-    setTimeout(() => { U.fade(true); setTimeout(() => { const p = nearestPoi(cat, pl.pos.x, pl.pos.z), o = doorOut(p, 2.2); G.wanted.clear(); G.wanted.level = 0; for (const n of N.list.slice()) if (n.cop && !n.keep) n.remove(); for (const v of V.list.slice()) if (v.ai && v.ai.chase) v.remove(); pl.dead = false; pl.health = pl.maxHealth; pl.teleport(o.x, o.z, o.h); G.cam.yaw = o.h; G.timeMul = 1; G.env.time = (G.env.time + 5) % 24; G.env.envT = 99; fn(p); U.bigText(null); U.fade(false); G.preload(o.x, o.z); }, 600); }, 3200);
+    pl.ch.root.position.set(pl.pos.x, pl.pos.y, pl.pos.z); U.closeMenu(); U.bigText(title, sub, colr); G.timeMul = 0.35; if (G.audio) G.audio.wasted(); failMission(title === 'WASTED' ? 'You died' : 'You were arrested'); endJob(); if (G.net.active && title === 'WASTED') G.net.died();
+    setTimeout(() => { U.fade(true); setTimeout(() => { const p = nearestPoi(cat, pl.pos.x, pl.pos.z), o = doorOut(p, 2.2); G.wanted.clear(); G.wanted.level = 0; for (const n of N.list.slice()) if (n.cop && !n.keep) n.remove(); for (const v of V.list.slice()) if (v.ai && v.ai.chase) v.remove(); pl.dead = false; pl.health = pl.maxHealth; pl.teleport(o.x, o.z, o.h); G.cam.yaw = o.h; G.timeMul = 1; if (!G.net.active) G.env.time = (G.env.time + 5) % 24; G.env.envT = 99; fn(p); U.bigText(null); U.fade(false); G.preload(o.x, o.z); }, 600); }, 3200);
   }
   Gm.wasted = () => respawn('hospital', 'WASTED', '#e5484d', '', p => { const fee = Math.min(5000, Math.round(pl.money * 0.1)); pl.money -= fee; G.state.stats.wasted = (G.state.stats.wasted || 0) + 1; U.notify('Treated at ' + p.n + '. Bill: ' + G.taka(fee)); });
   Gm.busted = () => respawn('police', 'BUSTED', '#3b86d8', '', p => { const fine = Math.min(pl.money, 2500); pl.money -= fine; pl.inv = { fist: { clip: 0, ammo: 0 } }; pl.selectWeapon('fist', true); G.state.stats.busted = (G.state.stats.busted || 0) + 1; U.notify('Released from ' + p.n + '. Weapons confiscated, fine ' + G.taka(fine)); });
   Gm.onExplosion = function (x, y, z, r, src) {
+    if (G.net.active && src !== 'net') G.net.send('x', [Math.round(x * 10) / 10, Math.round(y * 10) / 10, Math.round(z * 10) / 10, Math.round(r / 9 * 10) / 10]);
     const d0 = Math.hypot(x - G.cam.pos.x, z - G.cam.pos.z); if (G.audio) G.audio.explosion(d0); G.fx.shake = Math.min(1.2, G.fx.shake + 14 / (d0 + 8));
     for (const p of N.list.slice()) { const d = Math.hypot(p.x - x, p.z - z); if (d < r && !p.dead) { const k = 1 - d / r; p.knock((p.x - x) / (d || 1) * 9 * k, (p.z - z) / (d || 1) * 9 * k, 260 * k, src === 'player' ? 'player' : 'npc'); } }
     for (const v of V.list) { if (v === src) continue; const d = Math.hypot(v.x - x, v.z - z); if (d < r + 2) { const k = 1 - d / (r + 2); v.sleep = false; v.damage(1600 * k); v.vx += (v.x - x) / (d || 1) * 7 * k; v.vz += (v.z - z) / (d || 1) * 7 * k; v.vy = 4 * k; v.y += 0.05; } }
     if (!pl.dead && pl.mode !== 'interior') { const d = Math.hypot(pl.pos.x - x, pl.pos.z - z); if (pl.vehicle === src || pl.ride === src) pl.damage(250, null); else if (d < r) pl.damage(170 * (1 - d / r) * (pl.vehicle ? 0.4 : 1), null); }
-    if (src === 'player' || (src && src.driver === 'player')) G.wanted.crime('explosion', x, z); N.alarm(x, z, 90, 'npc');
+    if (src !== 'net' && (src === 'player' || (src && src.driver === 'player'))) G.wanted.crime('explosion', x, z); N.alarm(x, z, 90, 'npc');
   };
   // ---------- objective marker ----------
   let ring = null;
@@ -120,6 +126,7 @@
   Gm.update = function (dt) {
     if (ring && ring.visible) { ring.rotation.y += dt; ring.material.opacity = 0.3 + Math.sin(G.time * 4) * 0.1; }
     const s = G.state.stats, d = Math.hypot(pl.pos.x - lx, pl.pos.z - lz); if (d < 30 && pl.mode !== 'interior') { if (pl.mode === 'vehicle') s.driven = (s.driven || 0) + d; else if (pl.mode === 'foot') s.walked = (s.walked || 0) + d; } lx = pl.pos.x; lz = pl.pos.z;
+    Gm.autoT = (Gm.autoT || 0) + dt; if (Gm.autoT > 45 && !pl.dead && !Gm.mission && G.wanted.level === 0) { Gm.autoT = 0; Gm.save(); }
     if (pl.dead || pl.mode === 'interior') return;
     if (G.input.hit.KeyJ && !U.blocking) startJob();
     const m = Gm.mission;

@@ -1,0 +1,55 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".validate": "$room.length <= 20",
+        "m": {
+          ".read": true,
+          "$uid": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['n', 'a']) && newData.child('n').isString() && newData.child('n').val().length <= 24 && newData.child('a').isString() && newData.child('a').val().length < 900"
+          }
+        },
+        "s": {
+          ".read": true,
+          "$uid": {
+            ".write": true,
+            ".validate": "newData.isString() && newData.val().length < 220"
+          }
+        },
+        "e": {
+          ".read": true,
+          ".indexOn": ["ts"],
+          "$id": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['u', 't', 'd', 'ts']) && newData.child('d').isString() && newData.child('d').val().length < 420 && newData.child('t').isString() && newData.child('t').val().length <= 3"
+          }
+        }
+      }
+    },
+    "boysAuth": {
+      "$i": {
+        ".write": "!data.exists() || newData.child('ah').val() === data.child('ah').val()",
+        ".validate": "$i.matches(/^(1[0-9]|[0-9])$/) && newData.hasChildren(['ph', 'ah', 'q']) && newData.child('ph').isString() && newData.child('ph').val().length === 64 && newData.child('ah').isString() && newData.child('ah').val().length === 64 && newData.child('q').isString() && newData.child('q').val().length <= 120",
+        "q": { ".read": true }
+      }
+    },
+    "boysLogin": {
+      "$i": {
+        "last": {
+          ".write": "newData.child('ph').val() === root.child('boysAuth').child($i).child('ph').val()",
+          ".validate": "newData.hasChildren(['ph', 't']) && newData.child('t').val() === now"
+        }
+      }
+    },
+    "boysSave": {
+      "$i": {
+        ".read": true,
+        ".write": "newData.parent().parent().child('boysLogin').child($i).child('last').child('t').val() === now",
+        ".validate": "newData.hasChildren(['d', 't']) && newData.child('d').isString() && newData.child('d').val().length < 60000"
+      }
+    }
+  }
+}

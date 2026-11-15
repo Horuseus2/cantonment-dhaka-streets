@@ -54,6 +54,7 @@
     W.signals = M.signals.map(s => ({ x: s[0] / 10, z: s[1] / 10 }));
     W.checkpoints = M.checkpoints.map(c => ({ n: c.n, x: c.x / 10, z: c.z / 10, a: c.a / 100, w: c.w }));
     W.rails = M.rails.map(a => G.decodeRing(a, 0));
+    const sp = M.special || {}; W.dock = sp.dock ? { x: sp.dock[0] / 10, z: sp.dock[1] / 10, a: sp.dock[2] / 1000 } : null; W.villaSpec = sp.villa ? { x: sp.villa.x / 10, z: sp.villa.z / 10, a: sp.villa.a / 1000, w: sp.villa.w, d: sp.villa.d, rw: sp.villa.rw } : null; W.docks = [];
     progress(0.16, 'Paving real roads');
     await G.frame();
     buildFlat(M);
@@ -179,10 +180,14 @@
   }
 
   // ---------- queries ----------
+  W.addSolid = function (pts, h) { const r = new Float32Array(pts); let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, cx = 0, cz = 0; const n = r.length / 2; for (let i = 0; i < n; i++) { const x = r[i * 2], z = r[i * 2 + 1]; x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); cx += x; cz += z; } const b = { f: 1, s: 3, shop: 0, r, x0, x1, z0, z1, cx: cx / n, cz: cz / n, h, solid: true, off: false }; const bi = W.buildings.length; W.buildings.push(b); gridAdd(W.bGrid, BC, x0, z0, x1, z1, bi); if (W._stamps.length <= bi) { const ns = new Int32Array(bi + 256); ns.set(W._stamps); W._stamps = ns; } return b; };
+  W.addPoi = function (p) { p.id = W.pois.length; p.kiosk = p.kiosk || 0; if (p.rx === undefined) { p.rx = null; p.rz = null; } W.pois.push(p); gridAdd(W.poiGrid, 50, p.x, p.z, p.x, p.z, p); return p; };
   W.addCircle = function (x, z, r) { const k = key(Math.floor(x / BC), Math.floor(z / BC)); let a = W.circGrid.get(k); if (!a) W.circGrid.set(k, a = []); a.push(x, z, r); };
   W.inCantt = function (x, z) { for (const c of W.cantt) if (x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1 && G.pip(x, z, c.r)) return true; return false; };
-  W.inWater = function (x, z) { const a = W.waterGrid.get(key(Math.floor(x / 100), Math.floor(z / 100))); if (!a) return false; for (const w of a) if (x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 && G.pip(x, z, w.r)) { const nr = W.nearestRoad(x, z, 14, 10); return !(nr && nr.d < W.roads[nr.ri].w / 2 + 0.5); } return false; };
-  W.buildingAt = function (x, z) { const a = W.bGrid.get(key(Math.floor(x / BC), Math.floor(z / BC))); if (!a) return -1; for (const bi of a) { const b = W.buildings[bi]; if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && G.pip(x, z, b.r)) return bi; } return -1; };
+  W.inWaterRaw = function (x, z) { const a = W.waterGrid.get(key(Math.floor(x / 100), Math.floor(z / 100))); if (!a) return false; for (const w of a) if (x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 && G.pip(x, z, w.r)) return true; return false; };
+  W.onDock = function (x, z) { for (const d of W.docks) { const dx = d[2] - d[0], dz = d[3] - d[1], l2 = dx * dx + dz * dz; let t = ((x - d[0]) * dx + (z - d[1]) * dz) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t; if (Math.hypot(x - d[0] - dx * t, z - d[1] - dz * t) < d[4]) return true; } return false; };
+  W.inWater = function (x, z) { const a = W.waterGrid.get(key(Math.floor(x / 100), Math.floor(z / 100))); if (!a) return false; if (W.docks.length && W.onDock(x, z)) return false; for (const w of a) if (x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 && G.pip(x, z, w.r)) { const nr = W.nearestRoad(x, z, 14, 10); return !(nr && nr.d < W.roads[nr.ri].w / 2 + 0.5); } return false; };
+  W.buildingAt = function (x, z) { const a = W.bGrid.get(key(Math.floor(x / BC), Math.floor(z / BC))); if (!a) return -1; for (const bi of a) { const b = W.buildings[bi]; if (!b.off && x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && G.pip(x, z, b.r)) return bi; } return -1; };
   W.placeAt = function (x, z) { let best = null, bd = 700; for (const p of W.places) { const d = Math.hypot(p.x - x, p.z - z) * (p.k ? 0.8 : 1); if (d < bd) { bd = d; best = p; } } return best ? best.n : (W.inCantt(x, z) ? 'Dhaka Cantonment' : 'Dhaka'); };
   const NR = { ri: 0, i: 0, t: 0, x: 0, z: 0, d: 0, y: 0 };
   W.nearestRoad = function (x, z, rad, maxT, minT, out) {
@@ -223,7 +228,7 @@
       for (let ci = c0; ci <= c1; ci++) for (let cj = d0; cj <= d1; cj++) {
         const k = key(ci, cj), a = W.bGrid.get(k);
         if (a) for (const bi of a) {
-          const b = W.buildings[bi]; if (p.x < b.x0 - rad || p.x > b.x1 + rad || p.z < b.z0 - rad || p.z > b.z1 + rad) continue;
+          const b = W.buildings[bi]; if (b.off || p.x < b.x0 - rad || p.x > b.x1 + rad || p.z < b.z0 - rad || p.z > b.z1 + rad) continue;
           const r = b.r, n = r.length; let best = 1e9, bx = 0, bz = 0;
           for (let i = 0, j = n - 2; i < n; j = i, i += 2) { const ax = r[j], az = r[j + 1], dx = r[i] - ax, dz = r[i + 1] - az, l2 = dx * dx + dz * dz; let t = l2 ? ((p.x - ax) * dx + (p.z - az) * dz) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; const px = ax + dx * t, pz = az + dz * t, d = (p.x - px) * (p.x - px) + (p.z - pz) * (p.z - pz); if (d < best) { best = d; bx = px; bz = pz; } }
           best = Math.sqrt(best); const inside = G.pip(p.x, p.z, r);
@@ -247,7 +252,7 @@
     while (t <= best && guard++ < 400) {
       const a = W.bGrid.get(key(cx, cz));
       if (a) for (const bi of a) {
-        if (st[bi] === stamp) continue; st[bi] = stamp; const b = W.buildings[bi], r = b.r, n = r.length;
+        if (st[bi] === stamp) continue; st[bi] = stamp; const b = W.buildings[bi], r = b.r, n = r.length; if (b.off) continue;
         for (let i = 0, j = n - 2; i < n; j = i, i += 2) {
           const ax = r[j], az = r[j + 1], ex = r[i] - ax, ez = r[i + 1] - az, den = dx * ez - dz * ex; if (Math.abs(den) < 1e-9) continue;
           const tt = ((ax - ox) * ez - (az - oz) * ex) / den, u = ((ax - ox) * dz - (az - oz) * dx) / den;

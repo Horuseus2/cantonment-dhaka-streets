@@ -3,3 +3,5 @@ tools/osm_*.json
 tools/package-lock.json
 *.log
 publish-online.bat
+firebase/*.log
+firebase/.firebase/

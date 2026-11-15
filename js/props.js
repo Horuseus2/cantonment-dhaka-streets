@@ -13,7 +13,7 @@
     hotel: { col: '#7d3c98', label: 'HOTEL', icon: '🛏', blip: 2 }, office: { col: '#566573', label: 'OFFICE', icon: '▣', blip: 3 }, public: { col: '#5d6d7e', label: 'PUBLIC HALL', icon: '🏛', blip: 2 },
     jewelry: { col: '#b7950b', label: 'JEWELLERS', icon: '💎', blip: 3 }, gunshop: { col: '#7b241c', label: 'ARMS STORE', icon: '🔫', blip: 0 }, cardealer: { col: '#117864', label: 'CAR SHOWROOM', icon: '🚗', blip: 0 },
     home: { col: '#2ecc71', label: 'SAFEHOUSE', icon: '🏠', blip: 0 }, property: { col: '#f1c40f', label: 'PROPERTY', icon: '🏠', blip: 0 }, house: { col: '#7f8c8d', label: 'RESIDENCE', icon: '', blip: 9 },
-    vip: { col: '#c9a227', label: 'BOYS CLUB RESIDENCE', icon: '👑', blip: 0 }, bus: { col: '#1565c0', label: 'BUS STOP', icon: '🚌', blip: 1 }, gate: { col: '#1e5631', label: 'DHAKA CANTONMENT', icon: '', blip: 9 }
+    vip: { col: '#c9a227', label: 'BOYS CLUB RESIDENCE', icon: '👑', blip: 0 }, armory: { col: '#3b4046', label: 'PRIVATE ARMORY', icon: '', blip: 9 }, bus: { col: '#1565c0', label: 'BUS STOP', icon: '🚌', blip: 1 }, gate: { col: '#1e5631', label: 'DHAKA CANTONMENT', icon: '', blip: 9 }
   };
   const T_ = { trees: new Map(), lamps: new Map(), poles: new Map(), wires: new Map(), doors: new Map(), kiosks: new Map(), stops: new Map(), gates: new Map(), signals: new Map(), air: new Map() };
   const push = (m, k, v) => { let a = m.get(k); if (!a) m.set(k, a = []); a.push(v); };
@@ -61,7 +61,8 @@
     P.sigMats = []; for (const c of [0xff2a1a, 0xffb300, 0x1aff5a, 0xff2a1a, 0xffb300, 0x1aff5a]) P.sigMats.push(new THREE.MeshStandardMaterial({ color: 0x111111, emissive: c, emissiveIntensity: 0.05 }));
     const r = G.rng(777);
     const free = (x, z, clear) => { if (W.buildingAt(x, z) >= 0) return false; const nr = W.nearestRoad(x, z, 20, 10); if (nr && nr.d < W.roads[nr.ri].w / 2 + clear) return false; return true; };
-    const addTree = (x, z, kind, s) => { if (x < W.bounds.minX || x > W.bounds.maxX || z < W.bounds.minZ || z > W.bounds.maxZ) return; push(T_.trees, ck(x, z), [x, z, kind, s, r() * 6.28]); W.addCircle(x, z, kind === 5 ? 0.3 : 0.32 * s); };
+    const EST = G.estate; const nearDoor = (x, z) => { for (let i = Math.floor((x - 6) / 50); i <= Math.floor((x + 6) / 50); i++) for (let j = Math.floor((z - 6) / 50); j <= Math.floor((z + 6) / 50); j++) { const a = W.poiGrid.get(key(i, j)); if (a) for (const p of a) { if (p.kiosk) continue; const ox = Math.sin(p.a), oz = Math.cos(p.a), dx = x - p.x, dz = z - p.z, f = dx * ox + dz * oz, sd = Math.abs(dx * oz - dz * ox); if (f > -0.5 && f < 7 && sd < 2.6) return true; } } return false; };
+    const addTree = (x, z, kind, s, force) => { if (x < W.bounds.minX || x > W.bounds.maxX || z < W.bounds.minZ || z > W.bounds.maxZ) return; if (!force && (nearDoor(x, z) || (EST && EST.keepClear(x, z)))) return; push(T_.trees, ck(x, z), [x, z, kind, s, r() * 6.28]); W.addCircle(x, z, kind === 5 ? 0.3 : 0.32 * s); };
     // 1. woods, parks
     const DENS = { wood: 75, park: 240, golf: 650, cemetery: 260, wetland: 500 };
     for (const a of W.areas) { const d = DENS[a.t]; if (!d) continue; const n = Math.min(900, Math.floor((a.x1 - a.x0) * (a.z1 - a.z0) / d)); for (let i = 0; i < n; i++) { const x = a.x0 + r() * (a.x1 - a.x0), z = a.z0 + r() * (a.z1 - a.z0); if (!G.pip(x, z, a.r) || !free(x, z, 1.5)) continue; addTree(x, z, a.t === 'wood' ? [0, 1, 1, 2, 0, 3][(r() * 6) | 0] : [0, 2, 1, 3, 5, 5][(r() * 6) | 0], 0.75 + r() * 0.6); } }
@@ -75,12 +76,13 @@
         const ax = W.nx[k[i]], az = W.nz[k[i]], dx = W.nx[k[i + 1]] - ax, dz = W.nz[k[i + 1]] - az, l = Math.hypot(dx, dz); if (l < 0.5) continue; const fx = dx / l, fz = dz / l, rx = -fz, rz = fx;
         const cantt = W.inCantt(ax, az), spT = cantt ? 13 : rd.t <= 4 ? 30 : 46;
         if (rd.t <= 5) { while (accT < l) { const side = cnt++ % 2 ? 1 : -1, off = hw + (rd.t <= 4 ? 2.6 : 1.5), x = ax + fx * accT + rx * side * off, z = az + fz * accT + rz * side * off; if (free(x, z, 0.9) && !W.inWater(x, z)) addTree(x, z, cantt ? [4, 4, 0, 2, 1, 4][(hs + cnt) % 6] : [0, 1, 2, 3, 1][(hs + (cnt >> 2)) % 5], 0.8 + r() * 0.45); accT += spT * (0.8 + r() * 0.4); } accT -= l; }
-        if (rd.t <= 4 && rd.w >= 6) { while (accL < l) { const side = lcnt++ % 2 ? 1 : -1, x = ax + fx * accL + rx * side * (hw + 0.9), z = az + fz * accL + rz * side * (hw + 0.9); if (W.buildingAt(x, z) < 0) { push(T_.lamps, ck(x, z), [x, z, Math.atan2(-rx * side, -rz * side)]); W.addCircle(x, z, 0.14); } accL += 38; } accL -= l; }
+        if (rd.t <= 4 && rd.w >= 6) { while (accL < l) { const side = lcnt++ % 2 ? 1 : -1, x = ax + fx * accL + rx * side * (hw + 0.9), z = az + fz * accL + rz * side * (hw + 0.9); if (W.buildingAt(x, z) < 0 && !(EST && EST.keepClear(x, z))) { push(T_.lamps, ck(x, z), [x, z, Math.atan2(-rx * side, -rz * side)]); W.addCircle(x, z, 0.14); } accL += 38; } accL -= l; }
         else if (rd.t >= 5 && !cantt) { const side = hs % 2 ? 1 : -1; while (accP < l) { const x = ax + fx * accP + rx * side * (hw + 0.25), z = az + fz * accP + rz * side * (hw + 0.25); if (W.buildingAt(x, z) < 0) { const pole = [x, z, Math.atan2(fx, fz), hs + lcnt++]; push(T_.poles, ck(x, z), pole); W.addCircle(x, z, 0.13); if (lastPole && Math.hypot(lastPole[0] - x, lastPole[1] - z) < 60) push(T_.wires, ck(x, z), [lastPole[0], lastPole[1], x, z, hs + lcnt]); lastPole = pole; } else lastPole = null; accP += 31; } accP -= l; }
       }
     });
     // 4. scattered greenery inside the cantonment
     for (const c of W.cantt) { const n = Math.floor((c.x1 - c.x0) * (c.z1 - c.z0) / 1900); for (let i = 0; i < n; i++) { const x = c.x0 + r() * (c.x1 - c.x0), z = c.z0 + r() * (c.z1 - c.z0); if (!G.pip(x, z, c.r) || !free(x, z, 2.5) || W.inWater(x, z)) continue; addTree(x, z, [0, 1, 2, 4, 3, 0, 5][(r() * 7) | 0], 0.8 + r() * 0.5); } }
+    if (EST) for (const t of EST.treeSpots) addTree(t[0], t[1], t[2], t[2] === 5 ? 1 : 0.85 + r() * 0.3, true);
     // doors etc
     for (const p of W.pois) { if (p.kiosk) { push(T_.kiosks, ck(p.x, p.z), p); W.addCircle(p.x - Math.sin(p.a) * 0.9, p.z - Math.cos(p.a) * 0.9, 1.1); } else push(T_.doors, ck(p.x, p.z), p); }
     for (const s of W.stops) { const nr = W.nearestRoad(s.rx, s.rz, 30, 6, 0, {}); let dx = s.x - s.rx, dz = s.z - s.rz, l = Math.hypot(dx, dz); const hw = nr ? W.roads[nr.ri].w / 2 : 4; if (l < 0.5 && nr) { const rd = W.roads[nr.ri], a = rd.k[nr.i], b = rd.k[nr.i + 1]; dx = -(W.nz[b] - W.nz[a]); dz = W.nx[b] - W.nx[a]; l = Math.hypot(dx, dz) || 1; }
@@ -182,7 +184,8 @@
   P.signText = function (p) {
     if (p.c === 'bus') return [p.n, 'BUS STOP'];
     if (p.c === 'gate') return [p.n.toUpperCase(), 'DHAKA CANTONMENT'];
-    if (p.c === 'vip') { const b = G.BOYS && G.BOYS[+p.n]; return G.boysUnlocked && b ? [b.name, b.army ? 'OFFICER BUNGALOW' : 'DUPLEX RESIDENCE'] : ['Private Residence', 'MEMBERS ONLY']; }
+    if (p.c === 'vip') { const b = G.BOYS && G.BOYS[+p.n]; return G.boysUnlocked && b ? [b.name, b.villa ? 'PRIVATE VILLA' : b.army ? 'OFFICER BUNGALOW' : b.lake ? 'LAKESIDE DUPLEX' : 'DUPLEX RESIDENCE'] : ['Private Residence', 'MEMBERS ONLY']; }
+    if (p.c === 'armory') return ['ARMORY', 'AUTHORISED ONLY'];
     if (p.c === 'property') return [p.n, G.state && G.state.owned && G.state.owned[p.id] ? 'YOUR PROPERTY' : 'FOR SALE'];
     return [p.n, (P.CAT[p.c] || P.CAT.store).label];
   };

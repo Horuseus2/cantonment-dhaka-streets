@@ -33,6 +33,9 @@
     gtcoupe: car({ name: 'Abid GT Coupe', L: 4.7, W: 1.95, H: 1.28, gc: 0.14, belt: 0.84, hood: 0.74, deck: 0.86, wsB: 0.45, wsT: -0.2, rwT: -0.95, rwB: -1.8, wr: 0.36, wb: 2.75, ww: 0.3, max: 80, acc: 13.5, grip: 1.4, hp: 1300, price: 0, special: 1, x: { spoiler: 1 }, colors: ['#7a1420'] }),
     limo: car({ name: 'Abid Royale', L: 5.4, W: 1.98, H: 1.5, gc: 0.18, belt: 0.98, hood: 0.92, deck: 0.94, wsB: 0.95, wsT: 0.35, rwT: -1.0, rwB: -1.75, wr: 0.38, wb: 3.2, ww: 0.28, max: 66, acc: 9.5, grip: 1.2, hp: 1800, mass: 2300, price: 0, special: 1, x: { grille: 'big' }, colors: ['#d9d9d6'] }),
     luxsuv: car({ name: 'Abid Baron SUV', L: 5.0, W: 2.0, H: 1.85, gc: 0.28, belt: 1.12, hood: 1.04, deck: 1.12, wsB: 0.85, wsT: 0.38, rwT: -2.0, rwB: -2.3, wr: 0.42, wb: 2.95, ww: 0.3, max: 66, acc: 10, grip: 1.2, hp: 2000, mass: 2500, price: 0, special: 1, x: { rack: 1, grille: 'big' }, colors: ['#101820'] })
+    ,i8: car({ name: 'BMW i8', L: 4.7, W: 1.95, H: 1.29, gc: 0.12, belt: 0.78, hood: 0.62, deck: 0.84, wsB: 0.85, wsT: 0.0, rwT: -0.75, rwB: -1.7, wr: 0.37, wb: 2.8, ww: 0.27, max: 80, acc: 14.5, grip: 1.44, seats: 2, hp: 1300, price: 0, special: 1, x: { wedge: 1, i8: 1 }, colors: ['#e9edf0'] }),
+    rangerover: car({ name: 'Range Rover', L: 5.0, W: 2.0, H: 1.87, gc: 0.28, belt: 1.14, hood: 1.06, deck: 1.14, wsB: 0.9, wsT: 0.45, rwT: -2.0, rwB: -2.32, wr: 0.43, wb: 2.95, ww: 0.3, max: 68, acc: 10.5, grip: 1.22, hp: 2400, mass: 2500, price: 0, special: 1, x: { rover: 1 }, colors: ['#0d0f12'] }),
+    boat: { kind: 'boat', name: 'Navy Patrol Boat', L: 8.4, W: 2.9, H: 2.7, wr: 0.3, wb: 4, ww: 0.2, max: 19, acc: 5.2, brake: 5, grip: 1, hp: 3000, mass: 4000, seats: 4, price: 0, special: 1, colors: ['#8a949b'] }
   };
   for (const id in V.DEFS) V.DEFS[id].id = id;
 
@@ -101,6 +104,7 @@
     const gy = (d.hood + gc) / 2 + 0.06;
     if (x.grille === 'big') { trim.box(0, gy + 0.04, h + 0.01, Wd * 0.42, 0.42, 0.06, x.whip ? GOLD : CH); for (let i = 0; i < 9; i++) trim.box(-Wd * 0.18 + i * Wd * 0.045, gy + 0.04, h + 0.045, 0.02, 0.36, 0.02, BLK); if (x.whip) { trim.cyl(0, d.hood + 0.07, h - 0.35, 0.02, 0.14, GOLD, 6); trim.sph(0, d.hood + 0.16, h - 0.35, 0.045, 0.045, 0.045, GOLD, 1); } }
     else if (x.grille === 'kidney') { for (const sx of [-1, 1]) { trim.box(sx * 0.2, gy + 0.08, h + 0.012, 0.34, 0.22, 0.05, CH); trim.box(sx * 0.2, gy + 0.08, h + 0.04, 0.28, 0.16, 0.02, BLK); } }
+    else if (x.rover) { }
     else if (!x.wedge) { trim.box(0, gy + 0.05, h + 0.005, Wd * 0.5, 0.16, 0.05, BLK); trim.box(0, gy + 0.14, h + 0.02, Wd * 0.52, 0.02, 0.03, CH); }
     else { for (const sx of [-1, 1]) trim.box(sx * Wd * 0.3, gc + 0.2, h + 0.01, Wd * 0.26, 0.16, 0.05, BLK); }
     trim.box(0, gc + 0.3, h + 0.035, 0.56, 0.3, 0.02, BLK); trim.box(0, gc + 0.34, -h - 0.012, 0.56, 0.3, 0.02, BLK);
@@ -108,6 +112,8 @@
     if (x.spoiler) { for (const sx of [-1, 1]) trim.box(sx * Wd * 0.34, d.deck + 0.12, -h + 0.22, 0.04, 0.22, 0.16, BLK); paint.box(0, d.deck + 0.24, -h + 0.2, Wd - 0.1, 0.035, 0.3, WHITE, 0, -0.12); }
     if (x.stripes) for (const sx of [-1, 1]) { trim.box(sx * 0.14, d.hood + 0.008, (h - 0.3 + d.wsB) / 2 + 0.05, 0.16, 0.012, h - 0.3 - d.wsB - 0.1, col('#f4f4f4'), 0, Math.atan2(d.belt - d.hood, h - 0.3 - d.wsB)); trim.box(sx * 0.14, d.H + 0.036, (d.rwT + d.wsT) / 2, 0.16, 0.01, d.wsT - d.rwT, col('#f4f4f4')); }
     if (x.scoop) trim.box(0, d.hood + 0.05, d.wsB + 0.6, 0.5, 0.07, 0.6, BLK);
+    if (x.i8) { const BL = col('#1f7ae0'); for (const sx of [-1, 1]) { trim.box(sx * (Wd / 2 + 0.006), gc + 0.16, 0, 0.012, 0.05, d.wb - ra * 2 + 0.3, BL); trim.box(sx * (Wd / 2 + 0.004), d.belt - 0.06, -0.35, 0.012, 0.16, 2.3, BLK); trim.box(sx * 0.22, gc + 0.34, h + 0.012, 0.3, 0.07, 0.03, BL); trim.box(sx * (Wd / 2 - 0.2), d.deck + 0.03, -h + 0.5, 0.12, 0.05, 0.9, BLK, 0, 0, 0); } trim.box(0, d.hood + 0.012, d.wsB + 0.55, 0.7, 0.012, 0.9, BLK, 0, Math.atan2(d.belt - d.hood, h - 0.45 - d.wsB)); trim.box(0, d.H + 0.037, (d.rwT + d.wsT) / 2, cw - 0.16, 0.012, d.wsT - d.rwT, BLK); trim.box(0, gc + 0.12, -h - 0.01, Wd - 0.5, 0.05, 0.03, BL); }
+    if (x.rover) { trim.box(0, d.H + 0.038, (d.rwT + d.wsT) / 2, cw - 0.02, 0.014, d.wsT - d.rwT + 0.12, BLK); for (const sx of [-1, 1]) { trim.box(sx * (cw / 2 - 0.005), (d.belt + d.H) / 2 + 0.02, (d.rwT + d.wsT) / 2, 0.02, d.H - d.belt - 0.06, d.wsT - d.rwT + 0.5, BLK); trim.box(sx * (Wd / 2 + 0.006), d.belt - 0.4, d.wsB + 0.25, 0.012, 0.3, 0.07, CH); } trim.box(0, gy + 0.1, h + 0.012, Wd * 0.56, 0.3, 0.05, BLK); for (let i = 0; i < 3; i++) trim.box(0, gy + 0.0 + i * 0.1, h + 0.04, Wd * 0.52, 0.03, 0.02, CH); trim.box(0, d.hood + 0.004, h - 0.42, 0.9, 0.012, 0.09, CH); trim.box(0, d.deck - 0.02, -h - 0.01, 0.9, 0.05, 0.03, CH); }
     if (x.rack) for (const sx of [-1, 1]) { trim.box(sx * (cw / 2 - 0.12), d.H + 0.08, (d.rwT + d.wsT) / 2, 0.035, 0.035, d.wsT - d.rwT - 0.2, x.whip ? GOLD : CH); for (const z of [d.wsT - 0.3, d.rwT + 0.3]) trim.box(sx * (cw / 2 - 0.12), d.H + 0.05, z, 0.035, 0.07, 0.035, BLK); }
     if (x.bull) { for (const sx of [-1, 1]) trim.cyl(sx * 0.42, gc + 0.4, h + 0.12, 0.035, 0.75, BLK, 8); trim.cyl(0, gc + 0.72, h + 0.12, 0.035, 1.0, BLK, 8, 0, 0, Math.PI / 2); trim.cyl(0, gc + 0.38, h + 0.12, 0.035, 1.0, BLK, 8, 0, 0, Math.PI / 2); trim.cyl(Wd / 2 - 0.2, d.hood + 0.5, d.wsB + 0.1, 0.012, 1.3, BLK, 5); }
     if (x.spare) { trim.cyl(0, d.belt - 0.12, -h - 0.1, 0.4, 0.22, col('#3f4a2b'), 16, Math.PI / 2); trim.cyl(0, d.belt - 0.12, -h - 0.22, 0.2, 0.02, CH, 12, Math.PI / 2); }
@@ -206,7 +212,24 @@
     plateQuad(plate, 0, 0.6, -0.9, true, 0.2, 0.14);
     return { paint: paint.build(true), glass: null, trim: trim.build(true), head: head.build(true), tail: tail.build(true), plate: plate.build(), wheel: wheelGeo(d.wr, d.ww), wheels: [[0, d.wr, d.wb / 2, 1], [0, d.wr, -d.wb / 2, 0]], seats: [[0, -0.13, -0.28], [0, -0.1, -0.62]], pose: 'bike' };
   }
-  const BUILD = { car: buildCar, bus: buildBus, truck: buildTruck, jeep: buildJeep, cng: buildCng, rickshaw: buildRickshaw, bike: buildBike };
+  function buildBoat(d) {
+    const h = d.L / 2, Wd = d.W, paint = new GB(), glass = new GB(), trim = new GB(), head = new GB(), tail = new GB(), DK = col('#3d464d'), DECK = col('#5d666c'), BLK = col('#15181b'), WH = col('#e8eaec'), RED = col('#7a1f1f');
+    const s = new THREE.Shape(); s.moveTo(-Wd * 0.44, -h); s.lineTo(Wd * 0.44, -h); s.lineTo(Wd / 2, -h + 1.0); s.lineTo(Wd / 2, h * 0.3); s.quadraticCurveTo(Wd * 0.42, h * 0.78, 0, h); s.quadraticCurveTo(-Wd * 0.42, h * 0.78, -Wd / 2, h * 0.3); s.lineTo(-Wd / 2, -h + 1.0); s.lineTo(-Wd * 0.44, -h);
+    const hull = new THREE.ExtrudeGeometry(s, { depth: 0.78, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.06, bevelSegments: 1, curveSegments: 8 }); hull.rotateX(Math.PI / 2); hull.translate(0, 0.92, 0); paint.add(hull, null, WHITE);
+    const s2 = new THREE.Shape(); s2.moveTo(-Wd * 0.38, -h + 0.25); s2.lineTo(Wd * 0.38, -h + 0.25); s2.lineTo(Wd * 0.42, h * 0.28); s2.quadraticCurveTo(Wd * 0.34, h * 0.7, 0, h - 0.5); s2.quadraticCurveTo(-Wd * 0.34, h * 0.7, -Wd * 0.42, h * 0.28); s2.lineTo(-Wd * 0.38, -h + 0.25);
+    const dk = new THREE.ShapeGeometry(s2, 8); dk.rotateX(Math.PI / 2); dk.scale(1, -1, 1); dk.translate(0, 1.0, 0); dk.computeVertexNormals(); { const N = dk.attributes.normal; for (let i = 0; i < N.count; i++) N.setXYZ(i, 0, 1, 0); const ix = dk.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } } trim.add(dk, null, DECK);
+    for (const sx of [-1, 1]) { trim.box(sx * (Wd / 2 + 0.035), 0.16, -0.9, 0.03, 0.18, d.L * 0.62, RED); for (let i = 0; i < 6; i++) trim.cyl(sx * (Wd / 2 - 0.1), 1.25, -h + 0.6 + i * 1.02, 0.02, 0.62, WH, 5); trim.box(sx * (Wd / 2 - 0.1), 1.56, -h + 3.15, 0.035, 0.035, 5.2, WH); for (let i = 0; i < 3; i++) trim.sph(sx * (Wd / 2 + 0.1), 0.62, -h + 1.4 + i * 1.9, 0.11, 0.22, 0.11, col('#e06a1a'), 8); }
+    paint.box(0, 1.75, 0.15, 1.9, 1.62, 2.3, WHITE); trim.box(0, 2.6, 0.2, 2.2, 0.08, 2.75, DK);
+    glass.box(0, 2.05, 1.31, 1.7, 0.7, 0.03, WHITE, 0, -0.14); for (const sx of [-1, 1]) glass.box(sx * 0.96, 2.05, 0.2, 0.03, 0.66, 1.7, WHITE); glass.box(0, 2.05, -1.01, 1.4, 0.6, 0.03, WHITE);
+    trim.box(0, 1.5, -1.02, 0.7, 1.1, 0.04, DK); trim.cyl(0, 3.3, -0.3, 0.035, 1.4, DK, 6); trim.box(0, 3.75, -0.3, 0.9, 0.06, 0.12, WH); trim.box(0, 3.45, -0.3, 0.5, 0.04, 0.04, DK); trim.cyl(0.5, 2.95, -0.75, 0.012, 0.9, BLK, 4);
+    trim.cyl(0, 1.2, h - 2.0, 0.14, 0.55, DK, 8); trim.box(0, 1.55, h - 2.0, 0.26, 0.24, 0.5, BLK); trim.cyl(0, 1.6, h - 1.45, 0.035, 0.95, BLK, 6, Math.PI / 2); trim.box(0, 1.42, h - 2.25, 0.5, 0.3, 0.05, DK);
+    for (const sx of [-0.55, 0.55]) { trim.box(sx, 1.05, -h + 0.02, 0.42, 0.75, 0.5, BLK); trim.box(sx, 1.45, -h + 0.05, 0.36, 0.1, 0.4, col('#2b3138')); }
+    trim.cyl(-Wd * 0.3, 1.7, -h + 0.5, 0.018, 1.5, WH, 5); trim.box(-Wd * 0.3 + 0.28, 2.25, -h + 0.5, 0.55, 0.32, 0.02, col('#0f6b47')); trim.cyl(-Wd * 0.3 + 0.26, 2.25, -h + 0.5, 0.1, 0.03, col('#e0242a'), 12, 0, 0, Math.PI / 2);
+    trim.box(0, 1.0, 0.75, 0.5, 0.9, 0.3, DK); trim.cyl(0, 1.5, 0.58, 0.16, 0.03, BLK, 12, 1.2); trim.box(0, 0.98, -h + 1.6, 1.4, 0.36, 0.5, DK);
+    head.sph(0, 2.8, 1.1, 0.14, 0.14, 0.12, WHITE, 8); tail.box(0, 1.5, -h - 0.02, 0.2, 0.08, 0.04, WHITE);
+    return { paint: paint.build(true), glass: glass.build(true), trim: trim.build(true), head: head.build(true), tail: tail.build(true), plate: null, wheel: wheelGeo(0.3, 0.2), wheels: [], seats: [[0, 1.0, 0.25], [-0.5, 1.0 - 0.45, -h + 1.55], [0.5, 1.0 - 0.45, -h + 1.55], [0, 1.0, -1.6]], pose: 'helm', opaqueGlass: true };
+  }
+  const BUILD = { boat: buildBoat, car: buildCar, bus: buildBus, truck: buildTruck, jeep: buildJeep, cng: buildCng, rickshaw: buildRickshaw, bike: buildBike };
   V.geo = id => V.geos[id] || (V.geos[id] = BUILD[V.DEFS[id].kind](V.DEFS[id]));
 
   // ---------- vehicle instance ----------
@@ -242,8 +265,25 @@
       if (G.fx) G.fx.explosion(this.x, this.y + 0.8, this.z, 1, this);
     }
     setLightsOff() { this.lights = false; if (this.mHead) this.mHead.material = V.wreck; if (this.mTail) this.mTail.material = V.wreck; if (this.beam) this.beam.visible = false; if (this.mBarA) { this.mBarA.material = V.wreck; this.mBarB.material = V.wreck; } }
+    boatUpdate(dt, c) {
+      const d = this.def; c = c || IDLE; this.sleep = false; let h = this.h, fx = Math.sin(h), fz = Math.cos(h), rx = -fz, rz = fx, vf = this.vx * fx + this.vz * fz, vl = this.vx * rx + this.vz * rz;
+      const afloat = W.inWaterRaw(this.x, this.z), thr = this.dead ? 0 : c.throttle;
+      if (afloat) { let a = 0; if (thr > 0) a = d.acc * thr * Math.max(0, 1 - Math.pow(Math.max(0, vf) / d.max, 2)); else if (thr < 0) a = vf > 0.5 ? -d.brake : -d.acc * 0.5 * Math.max(0, 1 - Math.pow(Math.max(0, -vf) / (d.max * 0.3), 2)); a -= vf * 0.32; vf += a * dt; vl *= Math.exp(-1.7 * dt);
+        this.steer = G.damp(this.steer, (c.steer || 0) * 0.6, 4, dt); const om = this.steer * 1.5 * G.clamp(Math.max(Math.abs(vf) / 5, Math.abs(thr) * 0.45), 0, 1) * (vf < -0.3 ? -1 : 1); h += om * dt; this.h = h; this.om = om; }
+      else { vf *= Math.exp(-5 * dt); vl *= Math.exp(-5 * dt); this.om = 0; }
+      const nfx = Math.sin(h), nfz = Math.cos(h); this.vx = nfx * vf - nfz * vl; this.vz = nfz * vf + nfx * vl; this.speed = vf; this.slip = 0;
+      const nx = this.x + this.vx * dt, nz = this.z + this.vz * dt, lead = (vf >= 0 ? 1 : -1) * d.L * 0.45;
+      if (afloat && (!W.inWaterRaw(nx + nfx * lead, nz + nfz * lead) || !W.inWaterRaw(nx + nfx * lead - nfz * d.W * 0.4, nz + nfz * lead + nfx * d.W * 0.4) || !W.inWaterRaw(nx + nfx * lead + nfz * d.W * 0.4, nz + nfz * lead - nfx * d.W * 0.4))) { if (Math.abs(vf) > 3) this.impact(Math.abs(vf) * 0.6, nx + nfx * lead, nz + nfz * lead); this.vx *= -0.08; this.vz *= -0.08;
+        // nose towards open water so the boat glances off the bank instead of sticking to it
+        if (thr !== 0) { const sg = vf >= 0 ? 1 : -1, free = a => W.inWaterRaw(this.x + Math.sin(h + a) * lead * 1.5, this.z + Math.cos(h + a) * lead * 1.5); const l = free(0.75 * sg), r = free(-0.75 * sg); if (l !== r) this.h += (l ? 1 : -1) * dt * 0.9; else if (!l) this.h += dt * 0.6; } }
+      else { this.x = nx; this.z = nz; }
+      const t = this.age * 1.4 + this.x * 0.1; this.y = 0.02 + Math.sin(t) * 0.035; this.gy = this.y; this.vy = 0; this.pitch = G.damp(this.pitch, Math.sin(t * 0.8) * 0.018 + G.clamp(vf * 0.006, -0.03, 0.09), 3, dt); this.roll = G.damp(this.roll, Math.sin(t * 0.63) * 0.03 - (this.om || 0) * vf * 0.012, 3, dt);
+      this.brake = false; this.inWater = false; this.sync();
+      if (G.fx && Math.abs(vf) > 2.5 && this.near < 160 && Math.random() < dt * Math.min(40, Math.abs(vf) * 3)) { const s = Math.random() < 0.5 ? -1 : 1; G.fx.splash(this.x - nfx * d.L * 0.48 - nfz * s * 0.6, 0.15, this.z - nfz * d.L * 0.48 + nfx * s * 0.6); }
+    }
     update(dt, c) {
-      const d = this.def; this.age += dt;
+      const d = this.def; this.age += dt; if (this.remote) return;
+      if (d.kind === 'boat' && !(this.burn > 0)) return this.boatUpdate(dt, c);
       if (this.burn > 0) { this.burn -= dt; if (G.fx && Math.random() < dt * 20) G.fx.fire(this.x + this.fx * d.L * 0.3, this.y + 1, this.z + this.fz * d.L * 0.3); if (this.burn <= 0) this.explode(); }
       else if (!this.dead && this.health < d.hp * 0.35 && this.near < 90 && G.fx && Math.random() < dt * (this.health < d.hp * 0.15 ? 14 : 6)) G.fx.smoke(this.x + this.fx * d.L * 0.36, this.y + d.hood || this.y + 0.9, this.z + this.fz * d.L * 0.36, this.health < d.hp * 0.15 ? 0.12 : 0.45);
       if (this.sleep && !c) return;
